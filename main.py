@@ -32,6 +32,7 @@ class RegistrationStates(StatesGroup):
 class CompanySettingsStates(StatesGroup):
     waiting_for_company_name = State()
     waiting_for_new_company_name = State()
+    waiting_for_new_group_name = State()
 
 def init_db():
     conn = sqlite3.connect('database.db')
@@ -112,10 +113,6 @@ async def ask_for_next_missing_field(message: types.Message, state: FSMContext):
 
     # Clear the state if all fields are complete
     await state.clear()
-
-    # Display the main menu since all fields are filled
-    # await message.answer("Регистрация завершена. Добро пожаловать!")
-    # await main_menu(message, state, role)
 
     return True
 
@@ -558,51 +555,42 @@ async def process_new_birthdate(message: types.Message, state: FSMContext):
 
 @router.callback_query(lambda call: call.data == "company_settings")
 async def show_company_settings(callback_query: types.CallbackQuery, state: FSMContext):
-        userID = callback_query.from_user.id
-        with sqlite3.connect('database.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT company_id FROM user WHERE userID=?", (userID,))
-            company_id = cursor.fetchone()[0]
-            cursor.execute("SELECT company_name FROM company WHERE id=?", (company_id,))
-            company_name = cursor.fetchone()[0]
-            workerCount = cursor.execute("SELECT COUNT(*) FROM user WHERE company_id=?", (company_id,)).fetchone()[0]
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="Список сотрудников", callback_data="list_of_employees")],
-                [InlineKeyboardButton(text="Управлять отделами", callback_data="manage_groups")],
-                [InlineKeyboardButton(text="Изменить название компании", callback_data="change_company_name")],
-                [InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")],
-            ]
-        )
-        await callback_query.message.edit_text(f"Здравствуйте, администратор компании!\nВаша компания {company_name}.\nЧисло сотрудников: {workerCount}\n\nХотите что-нибудь изменить?", reply_markup=keyboard)
+    userID = callback_query.from_user.id
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT company_id FROM user WHERE userID=?", (userID,))
+        company_id = cursor.fetchone()[0]
+        cursor.execute("SELECT company_name FROM company WHERE id=?", (company_id,))
+        company_name = cursor.fetchone()[0]
+        workerCount = cursor.execute("SELECT COUNT(*) FROM user WHERE company_id=?", (company_id,)).fetchone()[0]
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Список сотрудников", callback_data="list_of_employees")],
+            [InlineKeyboardButton(text="Управлять отделами", callback_data="manage_groups")],
+            [InlineKeyboardButton(text="Изменить название компании", callback_data="change_company_name")],
+            [InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")],
+        ]
+    )
+    await callback_query.message.edit_text(f"Здравствуйте, администратор компании!\nВаша компания {company_name}.\nЧисло сотрудников: {workerCount}\n\nХотите что-нибудь изменить?", reply_markup=keyboard)
 
-@router.callback_query(lambda call: call.data == "manage_groups")
-async def manage_groups(callback_query: types.CallbackQuery, state: FSMContext):
-        with sqlite3.connect('database.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT company_id FROM user WHERE userID=?", (callback_query.from_user.id,))
-            company_id = cursor.fetchone()[0]
-            cursor.execute("SELECT * FROM user_group WHERE company_id=?", (company_id,))
-            user_groups = cursor.fetchall()
-        if user_groups:
-            keyboard = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [InlineKeyboardButton(text="Создать отдел", callback_data="create_group")],
-                    [InlineKeyboardButton(text="Изменить наименование отдела", callback_data="change_group_name")],
-                    [InlineKeyboardButton(text="Удалить отдел", callback_data="delete_group")],
-                    [InlineKeyboardButton(text="Назад", callback_data="company_settings")],
-                ]
-            )
-            groups_list = "\n".join([f"{group[1]} - {group[2]} сотрудников" for group in user_groups])
-            await callback_query.message.edit_text(f"Список отделов:\n{groups_list}", reply_markup=keyboard)
-        else:
-            keyboard = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [InlineKeyboardButton(text="Создать отдел", callback_data="create_group")],
-                    [InlineKeyboardButton(text="Назад", callback_data="company_settings")],
-                ]
-            )
-            await callback_query.message.edit_text("У вас пока нет отделов. Создайте новый отдел.", reply_markup=keyboard)
+async def show_company_settings_msg(message: types.Message):
+    userID = message.from_user.id
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT company_id FROM user WHERE userID=?", (userID,))
+        company_id = cursor.fetchone()[0]
+        cursor.execute("SELECT company_name FROM company WHERE id=?", (company_id,))
+        company_name = cursor.fetchone()[0]
+        workerCount = cursor.execute("SELECT COUNT(*) FROM user WHERE company_id=?", (company_id,)).fetchone()[0]
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Список сотрудников", callback_data="list_of_employees")],
+            [InlineKeyboardButton(text="Управлять отделами", callback_data="manage_groups")],
+            [InlineKeyboardButton(text="Изменить название компании", callback_data="change_company_name")],
+            [InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")],
+        ]
+    )
+    await message.answer(f"Здравствуйте, администратор компании!\nВаша компания {company_name}.\nЧисло сотрудников: {workerCount}\n\nХотите что-нибудь изменить?", reply_markup=keyboard)
 
 @router.callback_query(lambda call: call.data == "change_company_name")
 async def change_company_name(callback_query: types.CallbackQuery, state: FSMContext):
@@ -638,24 +626,6 @@ async def process_new_company_name(message: types.Message, state: FSMContext):
             await show_company_settings_msg(message)  # Call the main menu to refresh buttons properly
 
     await state.clear()
-
-async def show_company_settings_msg(message: types.Message):
-    userID = message.from_user.id
-    with sqlite3.connect('database.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT company_id FROM user WHERE userID=?", (userID,))
-        company_id = cursor.fetchone()[0]
-        cursor.execute("SELECT company_name FROM company WHERE id=?", (company_id,))
-        company_name = cursor.fetchone()[0]
-        workerCount = cursor.execute("SELECT COUNT(*) FROM user WHERE company_id=?", (company_id,)).fetchone()[0]
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Список сотрудников", callback_data="list_of_employees")],
-            [InlineKeyboardButton(text="Изменить название компании", callback_data="change_company_name")],
-            [InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")],
-        ]
-    )
-    await message.answer(f"Здравствуйте, администратор компании!\nВаша компания {company_name}.\nЧисло сотрудников: {workerCount}\n\nХотите что-нибудь изменить?", reply_markup=keyboard)
 
 @router.callback_query(lambda call: call.data.startswith("list_of_employees"))
 async def show_list_of_employees(callback_query: types.CallbackQuery, state: FSMContext):
@@ -734,9 +704,69 @@ async def show_referral_links(callback_query: types.CallbackQuery, state: FSMCon
                     message += f"Для отдела '{group_name}':\n {referal_link_group}\n\n"
             else:
                 message += f"На вашей компании нет отделов."
+                keyboard = InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [InlineKeyboardButton(text="Создать отдел", callback_data="create_group")],
+                        [InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")]
+                    ]
+                )
 
             # Edit the message with the accumulated referral links
             await callback_query.message.edit_text(message, reply_markup=keyboard)
+
+@router.callback_query(lambda call: call.data == "manage_groups")
+async def manage_groups(callback_query: types.CallbackQuery, state: FSMContext):
+        with sqlite3.connect('database.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT company_id FROM user WHERE userID=?", (callback_query.from_user.id,))
+            company_id = cursor.fetchone()[0]
+            cursor.execute("SELECT * FROM user_group WHERE company_id=?", (company_id,))
+            user_groups = cursor.fetchall()
+        if user_groups:
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="Создать отдел", callback_data="create_group")],
+                    [InlineKeyboardButton(text="Изменить наименование отдела", callback_data="change_group_name")],
+                    [InlineKeyboardButton(text="Удалить отдел", callback_data="delete_group")],
+                    [InlineKeyboardButton(text="Назад", callback_data="company_settings")],
+                ]
+            )
+            groups_list = "\n".join([f"{group[1]} - {group[2]} сотрудников" for group in user_groups])
+            await callback_query.message.edit_text(f"Список отделов:\n{groups_list}", reply_markup=keyboard)
+        else:
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="Создать отдел", callback_data="create_group")],
+                    [InlineKeyboardButton(text="Назад", callback_data="company_settings")],
+                ]
+            )
+            await callback_query.message.edit_text("У вас пока нет отделов. Создайте новый отдел.", reply_markup=keyboard)
+
+@router.callback_query(lambda call: call.data == "create_group")
+async def create_group(callback_query: types.CallbackQuery, state: FSMContext):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data="manage_groups")],
+        ]
+    )
+    await callback_query.message.edit_text("Введите название нового отдела:", reply_markup=keyboard)
+    await state.set_state(CompanySettingsStates.waiting_for_new_group_name)
+
+@router.message(StateFilter(CompanySettingsStates.waiting_for_new_group_name))
+async def process_new_group_name(message: types.Message, state: FSMContext):
+    new_group_name = message.text
+
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT role, company_id FROM user WHERE userID=?", (message.from_user.id,))
+        role, company_id = cursor.fetchone()
+
+        cursor.execute("INSERT INTO user_group (company_id, group_name) VALUES (?, ?)", (company_id, new_group_name))
+        conn.commit()
+
+    await message.answer("Отдел успешно создан.")
+    await state.update_data(main_menu_message_id=0)
+    await main_menu(message, state, role)  # Call the main menu to refresh buttons properly
 
 @router.callback_query(lambda call: call.data == "task_list")
 async def show_task_list(callback_query: types.CallbackQuery, state: FSMContext):
