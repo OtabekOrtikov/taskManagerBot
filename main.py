@@ -147,12 +147,34 @@ async def start_command(message: types.Message, state: FSMContext):
     # If there are any arguments after /start, parse them
     if len(args) > 1 and args[1]:
         try:
-            params = dict(param.split('=') for param in args[1].split('&') if '=' in param)
-            company_id = params.get('start')
-            group_id = params.get('group')
+            # Assuming that the format is "1_group=1", split it
+            params = args[1].split('_')
+            company_id = params[0]
+            if len(params) > 1:
+                group_id = params[1].split('=')[1]  # Extract group_id from "group=1"
+
+            print(f"Parsed company_id: {company_id}, group_id: {group_id}, user_id: {userID}")  # Debugging info
         except Exception as e:
             print(f"Error parsing arguments: {e}")
+            await message.reply("Ошибка в параметрах ссылки. Пожалуйста, проверьте правильность ссылки.")
+            return
 
+    # Ensure company_id and group_id are integers
+    if company_id:
+        try:
+            company_id = int(company_id)
+        except ValueError:
+            await message.reply("Некорректный идентификатор компании. Попробуйте снова.")
+            return
+
+    if group_id:
+        try:
+            group_id = int(group_id)
+        except ValueError:
+            await message.reply("Некорректный идентификатор отдела. Попробуйте снова.")
+            return
+
+    # Check if the user already exists in the database
     with sqlite3.connect('database.db') as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT role, company_id, group_id FROM user WHERE userID = ?", (userID,))
@@ -160,8 +182,8 @@ async def start_command(message: types.Message, state: FSMContext):
         userToken = await generate_user_token()
 
         if user:
+            # If user already exists in the database
             role, existing_company_id, existing_group_id = user
-
             complete = await ask_for_next_missing_field(message, state)
 
             if complete:
@@ -171,34 +193,38 @@ async def start_command(message: types.Message, state: FSMContext):
                     await message.answer("Вы уже зарегистрированы и присоединены к компании. Добро пожаловать!")
                     await main_menu(message, state, role=role)
         else:
-            if company_id:
-                # Convert company_id and group_id to integers
-                try:
-                    company_id = int(company_id)
-                    if group_id:
-                        group_id = int(group_id)
-                except ValueError:
-                    await message.reply("Некорректная ссылка. Пожалуйста, попробуйте снова.")
-                    return
+            # Handle users joining with a referral link
+            if company_id and group_id:
+                # Check if there are already users in the company/group
+                cursor.execute("SELECT COUNT(*) FROM user WHERE company_id = ? AND group_id = ?", (company_id, group_id))
+                user_count = cursor.fetchone()[0]
 
-                # Assign the role "Worker" when joining through a referral link
+                # Assign role based on whether the user is the first to join
+                if user_count == 0:
+                    role = "Manager"
+                    await message.reply(f"Добро пожаловать! Вы зарегистрированы как менеджер компании.")
+                else:
+                    role = "Worker"
+                    await message.reply(f"Добро пожаловать! Вы зарегистрированы как сотрудник компании.")
+
+                # Insert the user with the appropriate role
                 cursor.execute("INSERT INTO user (userID, userToken, role, company_id, group_id) VALUES (?, ?, ?, ?, ?)",
-                               (userID, userToken, "Worker", company_id, group_id))
+                               (userID, userToken, role, company_id, group_id))
                 conn.commit()
+
                 company_name = cursor.execute("SELECT company_name FROM company WHERE id=?", (company_id,)).fetchone()[0]
-                
+
                 complete = await ask_for_next_missing_field(message, state)
                 if complete:
-                    await message.reply(f"Добро пожаловать! Вы зарегистрированы как сотрудник компании {company_name} через реферальную ссылку.")
-                    await main_menu(message, state, role="Worker")
+                    await main_menu(message, state, role=role)
             else:
-                # If the user didn't join via a referral link, assign the role "Boss"
+                # Handle users joining without a referral link (assign role "Boss")
                 cursor.execute("INSERT INTO user (userID, userToken, role) VALUES (?, ?, ?)", (userID, userToken, "Boss"))
                 conn.commit()
                 await message.reply("Добро пожаловать! Пожалуйста, давайте приступим к процессу регистрации как руководитель компании.")
                 
                 # Start the registration process for the user
-            await ask_for_next_missing_field(message, state)
+                await ask_for_next_missing_field(message, state)
 
 async def ask_for_phone_number(message: types.Message, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
@@ -278,14 +304,26 @@ async def process_birthdate(message: types.Message, state: FSMContext):
     complete = await ask_for_next_missing_field(message, state)
     
     if complete:
-        # Fetch the role of the user from the database
+        # Fetch specific user data from the database
         with sqlite3.connect('database.db') as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT role FROM user WHERE userID=?", (message.from_user.id,))
-            role = cursor.fetchone()[0]
+            cursor.execute("SELECT userID, userToken, fullname, phone_number, position, birthdate, role, company_id, group_id FROM user WHERE userID=?", (message.from_user.id,))
+            user_data = cursor.fetchone()
+            userID, userToken, fullname, phone_number, position, birthdate, role, company_id, group_id = user_data
+
+            cursor.execute("SELECT group_name FROM user_group WHERE id=?", (group_id,))
+            group_name = cursor.fetchone()[0]
+
+            cursor.execute("SELECT userID FROM user WHERE role='Boss' AND company_id=?", (company_id,))
+            boss_id = cursor.fetchone()[0]
 
         await message.answer("Регистрация завершена. Добро пожаловать!")
+        
+        # Notify the Boss about the new employee
+        await bot.send_message(boss_id, f"Новый сотрудник успешно зарегистрирован.\n\nЕго данные:\nПользовательский токен: {userToken}\nИмя: {fullname}\nДолжность: {position}\nДата рождения: {birthdate}\nТелефон: +{phone_number}\nОтдел: {group_name}")
+        
         await main_menu(message, state, role)
+
 
 async def ask_for_company(message: types.Message, state: FSMContext):
     await message.answer("Пожалуйста, введите название вашей компании для создания:")
@@ -629,90 +667,221 @@ async def process_new_company_name(message: types.Message, state: FSMContext):
 
 @router.callback_query(lambda call: call.data.startswith("list_of_employees"))
 async def show_list_of_employees(callback_query: types.CallbackQuery, state: FSMContext):
-        # Check if the callback data contains a page number
-        if "page" in callback_query.data:
-            page = int(callback_query.data.split("_")[-1])
-        else:
-            page = 1  # Default to page 1 if it's the first time
+    # Check if the callback data contains a page number
+    if "page" in callback_query.data:
+        page = int(callback_query.data.split("_")[-1])
+    else:
+        page = 1  # Default to page 1 if it's the first time
 
-        offset = (page - 1) * max_user_per_page
+    offset = (page - 1) * max_user_per_page
 
-        with sqlite3.connect('database.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT company_id FROM user WHERE userID=?", (callback_query.from_user.id,))
-            company_id = cursor.fetchone()[0]
-            cursor.execute("SELECT id, userID, userToken, fullname FROM user WHERE company_id=? LIMIT ? OFFSET ?", (company_id, max_user_per_page, offset))
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        # Get the current user's role and company_id
+        cursor.execute("SELECT role, company_id, group_id FROM user WHERE userID=?", (callback_query.from_user.id,))
+        user_info = cursor.fetchone()
+        role, company_id, group_id = user_info
+
+        if role == "Boss":
+            # Boss can see all employees across the company, including their group names
+            cursor.execute("""
+                SELECT u.id, u.userID, u.userToken, u.fullname, g.group_name, u.role
+                FROM user u
+                LEFT JOIN user_group g ON u.group_id = g.id
+                WHERE u.company_id = ?""", (company_id,))
             employees = cursor.fetchall()
-            
-            cursor.execute("SELECT COUNT(*) FROM user WHERE company_id=?", (company_id,))
-            total_employees = cursor.fetchone()[0]
+        elif role == "Manager":
+            # Manager can only see employees in their group, excluding the manager themselves
+            cursor.execute("""
+                SELECT u.id, u.userID, u.userToken, u.fullname, u.role
+                FROM user u
+                WHERE u.company_id = ? AND u.group_id = ?""", (company_id, group_id))
+            employees = cursor.fetchall()
 
-        # Calculate total pages
-        total_pages = (total_employees + max_user_per_page - 1) // max_user_per_page
+    # Filter out the current user and the boss from the employees list
+    filtered_employees = [
+        employee for employee in employees if employee[1] != callback_query.from_user.id and employee[5] != 'Boss'
+    ]
 
-        # Build the inline keyboard with employee buttons and pagination
-        employee_buttons = [
-            [
-                InlineKeyboardButton(
-                    text=f"{employee[2]} {employee[3]} - Это вы" if employee[1] == callback_query.from_user.id else f"{employee[2]} {employee[3]}",
-                    callback_data="user_settings" if employee[1] == callback_query.from_user.id else f"employee_{employee[0]}"
-                )
-            ]
-            for employee in employees
-        ]
+    # Calculate total employees after filtering
+    total_employees = len(filtered_employees)
 
-        # Add pagination buttons if necessary
-        navigation_buttons = []
-        if page > 1:
-            navigation_buttons.append(InlineKeyboardButton(text="⬅️ Предыдущая", callback_data=f"list_of_employees_page_{page - 1}"))
-        if page < total_pages:
-            navigation_buttons.append(InlineKeyboardButton(text="Следующая ➡️", callback_data=f"list_of_employees_page_{page + 1}"))
+    # Apply pagination after filtering
+    paginated_employees = filtered_employees[offset:offset + max_user_per_page]
 
-        if navigation_buttons:
-            employee_buttons.append(navigation_buttons)  # Add pagination buttons
-        employee_buttons.append([InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")])
+    # Calculate total pages
+    total_pages = (total_employees + max_user_per_page - 1) // max_user_per_page
 
-        keyboard = InlineKeyboardMarkup(inline_keyboard=employee_buttons)
+    # Build the inline keyboard with employee buttons and pagination
+    employee_buttons = []
+    for employee in paginated_employees:
+        employee_id, employee_userID, employee_userToken, employee_fullname = employee[:4]
 
-        await callback_query.message.edit_text(f"Список всех сотрудников (Страница {page}/{total_pages}):", reply_markup=keyboard)
+        # For Boss, show userToken, fullname, and group_name; for Manager, just userToken and fullname
+        if role == "Boss":
+            group_name = employee[4] if employee[4] else "Без отдела"
+            employee_text = f"{employee_userToken} {employee_fullname} - {group_name}"
+        else:
+            employee_text = f"{employee_userToken} {employee_fullname}"
+
+        employee_buttons.append([InlineKeyboardButton(text=employee_text, callback_data=f"employee_{employee_id}")])
+
+    # Add pagination buttons if necessary
+    navigation_buttons = []
+    if page > 1:
+        navigation_buttons.append(InlineKeyboardButton(text="⬅️ Предыдущая", callback_data=f"list_of_employees_page_{page - 1}"))
+    if page < total_pages:
+        navigation_buttons.append(InlineKeyboardButton(text="Следующая ➡️", callback_data=f"list_of_employees_page_{page + 1}"))
+
+    if navigation_buttons:
+        employee_buttons.append(navigation_buttons)  # Add pagination buttons
+    employee_buttons.append([InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")])
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=employee_buttons)
+
+    if total_employees == 0:
+        await callback_query.message.edit_text("В вашем отделе пока нет сотрудников кроме вас.", reply_markup=keyboard)
+    else:
+        await callback_query.message.edit_text(f"Список сотрудников (Страница {page}/{total_pages}):", reply_markup=keyboard)
 
 
 @router.callback_query(lambda call: call.data == "referral_links")
 async def show_referral_links(callback_query: types.CallbackQuery, state: FSMContext):
-        keyboard = InlineKeyboardMarkup(
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT role, company_id, group_id FROM user WHERE userID=?", (callback_query.from_user.id,))
+        role, company_id, group_id = cursor.fetchone()
+        cursor.execute("SELECT * FROM company WHERE id=?", (company_id,))
+        company = cursor.fetchone()
+        cursor.execute("SELECT * FROM user_group where company_id=?", (company_id,))
+        groups = cursor.fetchall()
+        
+        if group_id:
+            cursor.execute("SELECT group_name FROM user_group WHERE id=?", (group_id,))
+            user_group_name = cursor.fetchone()[0]
+
+        if role == "Boss":
+            # Referral link for the entire company
+            message = f"Реферальные ссылки для компании '{company[1]}':\n\n"
+
+            if groups:
+                for group in groups:
+                    group_id, group_name = group[0], group[1]
+                    referral_link_group = f"https://t.me/{BOT_USERNAME}?start={company_id}_group={group_id}"
+                    message += f"Отдел '{group_name}':\n{referral_link_group}\n\n"
+            else:
+                message += "Ваша компания пока не имеет отделов."
+            
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")]
+                ]
+            )
+        else:
+            # Referral link for a specific group
+            referral_link_group = f"https://t.me/{BOT_USERNAME}?start={company_id}_group={group_id}"
+            message = f"Скопируйте реферальную ссылку для отдела компании '{user_group_name}' и отправьте её другим:\n\n{referral_link_group}"
+
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="Скопировать ссылку на отдел", url=referral_link_group)],
+                    [InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")]
+                ]
+            )
+
+    # Send or edit the message with the referral link
+    await callback_query.message.edit_text(message, reply_markup=keyboard)
+
+@router.callback_query(lambda call: call.data.startswith("employee_"))
+async def employee_details_handler(callback_query: types.CallbackQuery):
+    # Extract the employee_id from the callback data
+    employee_id = int(callback_query.data.split("_")[1])
+
+    # Connect to the database to fetch the employee details
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT userToken, fullname, phone_number, position, birthdate, role, group_id FROM user WHERE id=?", (employee_id,))
+        employee_data = cursor.fetchone()
+
+    if employee_data:
+        userToken, fullname, phone_number, position, birthdate, role, group_id = employee_data
+
+        # Fetch group name if group_id is present
+        cursor.execute("SELECT group_name FROM user_group WHERE id=?", (group_id,))
+        group_name = cursor.fetchone()[0] if group_id else "No group"
+
+        # Create a detailed message about the employee
+        employee_details = (
+            f"Информация о сотруднике:\n"
+            f"Токен: {userToken}\n"
+            f"Имя: {fullname}\n"
+            f"Телефон: {phone_number}\n"
+            f"Должность: {position}\n"
+            f"Дата рождения: {birthdate}\n"
+            f"Отдел: {group_name}\n"
+            f"Текущая роль: {'Администратор отдела' if role == 'Manager' else 'Сотрудник'}"
+        )
+
+        # Define the role change button
+        if role == "Manager":
+            change_role_button = InlineKeyboardButton(text="Сделать сотрудником", callback_data=f"confirm_change_role_{employee_id}_Worker")
+        else:
+            change_role_button = InlineKeyboardButton(text="Сделать администратором отдела", callback_data=f"confirm_change_role_{employee_id}_Manager")
+
+        # Send the details to the user with role change button
+        await callback_query.message.edit_text(employee_details, reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")]
+                [InlineKeyboardButton(text="Создать задачу", callback_data=f"create_task_{employee_id}")],
+                [change_role_button],
+                [InlineKeyboardButton(text="Назад к списку сотрудников", callback_data="list_of_employees"), InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")]
+            ]
+        ))
+    else:
+        await callback_query.answer("Сотрудник не найден.", show_alert=True)
+
+@router.callback_query(lambda call: call.data.startswith("confirm_change_role_"))
+async def confirm_role_change(callback_query: types.CallbackQuery):
+    # Extract the employee_id and new_role from the callback data
+    data_parts = callback_query.data.split("_")
+    
+    # Ensure that the data is correctly split (there should be 4 parts)
+    if len(data_parts) != 5:
+        await callback_query.answer(f"Ошибка при обработке запроса. {data_parts[0]} {data_parts[1]} {data_parts[2]} {data_parts[3]} {data_parts[4]} {len(data_parts)}", show_alert=True)
+        return
+
+    _, _, _, employee_id, new_role = data_parts  # Splitting into 4 parts
+
+    # Ask for confirmation before changing the role
+    await callback_query.message.edit_text(
+        f"Вы уверены, что хотите изменить роль этого сотрудника на '{'Администратор отдела' if new_role == 'Manager' else 'Сотрудник'}'?",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="Да", callback_data=f"change_role_{employee_id}_{new_role}")],
+                [InlineKeyboardButton(text="Нет", callback_data=f"employee_{employee_id}")]
             ]
         )
-        with sqlite3.connect('database.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT role, company_id FROM user WHERE userID=?", (callback_query.from_user.id,))
-            role, company_id = cursor.fetchone()
-            cursor.execute("SELECT * FROM company WHERE id=?", (company_id,))
-            company = cursor.fetchone()
-            cursor.execute("SELECT * FROM user_group WHERE company_id=?", (company_id,))
-            user_groups = cursor.fetchall()
+    )
 
-            # Initialize the message with the company referral link
-            message = f"Ваша реферальная ссылка для приглашения в компанию '{company[1]}':\n\n"
 
-            # Iterate through user groups and add each group's referral link
-            if user_groups:
-                for user_group in user_groups:
-                    group_id, group_name, _ = user_group
-                    referal_link_group = f"https://t.me/{BOT_USERNAME}?start={company_id}&group={group_id}"
-                    message += f"Для отдела '{group_name}':\n {referal_link_group}\n\n"
-            else:
-                message += f"На вашей компании нет отделов."
-                keyboard = InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [InlineKeyboardButton(text="Создать отдел", callback_data="create_group")],
-                        [InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")]
-                    ]
-                )
+@router.callback_query(lambda call: call.data.startswith("change_role_"))
+async def change_employee_role(callback_query: types.CallbackQuery, state: FSMContext):
+    # Extract the employee_id and the new role from the callback data
+    _,_, employee_id, new_role = callback_query.data.split("_")
 
-            # Edit the message with the accumulated referral links
-            await callback_query.message.edit_text(message, reply_markup=keyboard)
+    # Connect to the database to update the employee's role
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE user SET role=? WHERE id=?", (new_role, employee_id))
+        conn.commit()
+
+    # Send a success message to the user
+    await callback_query.answer(f"Роль сотрудника успешно изменена на {new_role}.", show_alert=True)
+
+    # Show the updated employee details again
+    await show_list_of_employees(callback_query, state)
+
+
+
 
 @router.callback_query(lambda call: call.data == "manage_groups")
 async def manage_groups(callback_query: types.CallbackQuery, state: FSMContext):
