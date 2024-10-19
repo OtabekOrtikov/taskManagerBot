@@ -8,7 +8,9 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 import sqlite3
 import asyncio
 import re
-from config import API_TOKEN, BOT_USERNAME, max_user_per_page
+
+from annotated_types import LowerCase
+from config import API_TOKEN, BOT_USERNAME, max_user_per_page, max_task_per_page
 from datetime import datetime
 
 # API_TOKEN = '7314896845:AAE4AXQdXTaeaN-BfegtS2EbzHKi7U68OOw'
@@ -34,6 +36,16 @@ class CompanySettingsStates(StatesGroup):
     waiting_for_new_company_name = State()
     waiting_for_new_group_name = State()
 
+class TaskCreationStates(StatesGroup):
+    assignee_id = State()
+    waiting_for_task_title = State()
+    waiting_for_task_description = State()
+    waiting_for_task_start_date = State()
+    waiting_for_task_due_date = State()
+    waiting_for_task_priority = State()
+    waiting_for_task_assignee = State()
+    waiting_for_task_confirmation = State()
+
 def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
@@ -56,7 +68,7 @@ def init_db():
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         group_name VARCHAR(255) NOT NULL,
                         company_id INTEGER NOT NULL REFERENCES company(id))''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS task_list (
+    cursor.execute('''CREATE TABLE IF NOT EXISTS task (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         task_title VARCHAR(255) NOT NULL,
                         task_description TEXT NOT NULL,
@@ -374,7 +386,7 @@ async def main_menu(message: types.Message, state: FSMContext, role):
     if role == 'Boss':
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="Список задач", callback_data="task_list")],
+                [InlineKeyboardButton(text="Список задач", callback_data="show_task_list")],
                 [InlineKeyboardButton(text="Список сотрудников", callback_data="list_of_employees"), InlineKeyboardButton(text="Реферальные ссылки", callback_data="referral_links")],
                 [InlineKeyboardButton(text="Профиль", callback_data="user_settings"), InlineKeyboardButton(text="Настройки компании", callback_data="company_settings")],
             ]
@@ -382,7 +394,7 @@ async def main_menu(message: types.Message, state: FSMContext, role):
     elif role == "Manager":
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="Список задач", callback_data="task_list")],
+                [InlineKeyboardButton(text="Список задач", callback_data="show_task_list")],
                 [InlineKeyboardButton(text="Список сотрудников", callback_data="list_of_employees"), InlineKeyboardButton(text="Реферальные ссылки", callback_data="referral_links")],
                 [InlineKeyboardButton(text="Профиль", callback_data="user_settings")],
             ]
@@ -390,7 +402,7 @@ async def main_menu(message: types.Message, state: FSMContext, role):
     else:
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="Список задач", callback_data="task_list")],
+                [InlineKeyboardButton(text="Список задач", callback_data="show_task_list")],
                 [InlineKeyboardButton(text="Профиль", callback_data="user_settings")],
             ]
         )
@@ -685,7 +697,7 @@ async def show_list_of_employees(callback_query: types.CallbackQuery, state: FSM
         if role == "Boss":
             # Boss can see all employees across the company, including their group names
             cursor.execute("""
-                SELECT u.id, u.userID, u.userToken, u.fullname, g.group_name, u.role
+                SELECT u.id, u.userID, u.userToken, u.fullname, u.role, g.group_name
                 FROM user u
                 LEFT JOIN user_group g ON u.group_id = g.id
                 WHERE u.company_id = ?""", (company_id,))
@@ -700,7 +712,7 @@ async def show_list_of_employees(callback_query: types.CallbackQuery, state: FSM
 
     # Filter out the current user and the boss from the employees list
     filtered_employees = [
-        employee for employee in employees if employee[1] != callback_query.from_user.id and employee[5] != 'Boss'
+        employee for employee in employees if employee[1] != callback_query.from_user.id and employee[4] != 'Boss'
     ]
 
     # Calculate total employees after filtering
@@ -719,7 +731,7 @@ async def show_list_of_employees(callback_query: types.CallbackQuery, state: FSM
 
         # For Boss, show userToken, fullname, and group_name; for Manager, just userToken and fullname
         if role == "Boss":
-            group_name = employee[4] if employee[4] else "Без отдела"
+            group_name = employee[5] if employee[5] else "Без отдела"
             employee_text = f"{employee_userToken} {employee_fullname} - {group_name}"
         else:
             employee_text = f"{employee_userToken} {employee_fullname}"
@@ -802,6 +814,8 @@ async def employee_details_handler(callback_query: types.CallbackQuery):
         cursor = conn.cursor()
         cursor.execute("SELECT userToken, fullname, phone_number, position, birthdate, role, group_id FROM user WHERE id=?", (employee_id,))
         employee_data = cursor.fetchone()
+        cursor.execute("SELECT role FROM user WHERE userID=?", (callback_query.from_user.id,))
+        handlerRole = cursor.fetchone()[0]
 
     if employee_data:
         userToken, fullname, phone_number, position, birthdate, role, group_id = employee_data
@@ -823,19 +837,21 @@ async def employee_details_handler(callback_query: types.CallbackQuery):
         )
 
         # Define the role change button
-        if role == "Manager":
-            change_role_button = InlineKeyboardButton(text="Сделать сотрудником", callback_data=f"confirm_change_role_{employee_id}_Worker")
-        else:
-            change_role_button = InlineKeyboardButton(text="Сделать администратором отдела", callback_data=f"confirm_change_role_{employee_id}_Manager")
+        inline_keyboard = []
 
+        inline_keyboard.append([InlineKeyboardButton(text="Создать задачу", callback_data=f"create_task_user_{employee_id}")])
+        inline_keyboard.append([InlineKeyboardButton(text="Список задач сотрудника", callback_data=f"show_task_list_user_{employee_id}")])
+
+        if handlerRole == "Boss":
+            if role == "Manager":
+                inline_keyboard.append([InlineKeyboardButton(text="Сделать обычным сотрудником", callback_data=f"confirm_change_role_{employee_id}_Worker")])
+            else:
+                inline_keyboard.append([InlineKeyboardButton(text="Сделать администратором отдела", callback_data=f"confirm_change_role_{employee_id}_Manager")])
+
+        inline_keyboard.append([InlineKeyboardButton(text="Назад к списку сотрудников", callback_data="list_of_employees"), InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")])
+        
         # Send the details to the user with role change button
-        await callback_query.message.edit_text(employee_details, reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="Создать задачу", callback_data=f"create_task_{employee_id}")],
-                [change_role_button],
-                [InlineKeyboardButton(text="Назад к списку сотрудников", callback_data="list_of_employees"), InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")]
-            ]
-        ))
+        await callback_query.message.edit_text(employee_details, reply_markup=InlineKeyboardMarkup(inline_keyboard=inline_keyboard))
     else:
         await callback_query.answer("Сотрудник не найден.", show_alert=True)
 
@@ -862,7 +878,6 @@ async def confirm_role_change(callback_query: types.CallbackQuery):
         )
     )
 
-
 @router.callback_query(lambda call: call.data.startswith("change_role_"))
 async def change_employee_role(callback_query: types.CallbackQuery, state: FSMContext):
     # Extract the employee_id and the new role from the callback data
@@ -879,9 +894,6 @@ async def change_employee_role(callback_query: types.CallbackQuery, state: FSMCo
 
     # Show the updated employee details again
     await show_list_of_employees(callback_query, state)
-
-
-
 
 @router.callback_query(lambda call: call.data == "manage_groups")
 async def manage_groups(callback_query: types.CallbackQuery, state: FSMContext):
@@ -937,15 +949,544 @@ async def process_new_group_name(message: types.Message, state: FSMContext):
     await state.update_data(main_menu_message_id=0)
     await main_menu(message, state, role)  # Call the main menu to refresh buttons properly
 
-@router.callback_query(lambda call: call.data == "task_list")
+@router.callback_query(lambda call: call.data.startswith("show_task_list"))
 async def show_task_list(callback_query: types.CallbackQuery, state: FSMContext):
+    # Set max groups/tasks per page
+    max_group_per_page = 5
+    max_task_per_page = 5
+
+    # Check if the callback data contains a page number
+    if "page" in callback_query.data:
+        page = int(callback_query.data.split("_")[-1])
+    else:
+        page = 1  # Default to page 1 if it's the first time
+
+    # Set the offset based on the page number
+    offset = (page - 1) * max_group_per_page
+
+    await state.set_data({"main_menu_message_id": callback_query.message.message_id})
+
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT role, company_id, group_id FROM user WHERE userID=?", (callback_query.from_user.id,))
+        role, company_id, group_id = cursor.fetchone()
+
+        inline_keyboard = []
+        message = "Список задач:\n\n"
+
+        if role == "Boss" or role == "Manager":
+            inline_keyboard.append([InlineKeyboardButton(text="Создать задачу", callback_data="create_task")])
+        
+        if role == 'Boss':
+            # Fetch the count of groups with tasks for pagination
+            cursor.execute("""
+                SELECT g.id as group_id, g.group_name, COUNT(t.id) as task_count
+                FROM user_group g
+                LEFT JOIN user u ON g.id = u.group_id
+                LEFT JOIN task t ON t.task_assignee_id = u.id
+                WHERE g.company_id = ? AND t.status != 'Finished'
+                GROUP BY g.id, g.group_name
+                """, (company_id,))
+            groups_with_tasks = cursor.fetchall()
+
+            total_groups = len(groups_with_tasks)  # Total number of groups with tasks
+
+            # Apply pagination based on the number of groups
+            paginated_groups = groups_with_tasks[offset:offset + max_group_per_page]
+
+            for group in paginated_groups:
+                group_id, group_name, task_count = group
+                # Add the group and task count as a button
+                inline_keyboard.append([InlineKeyboardButton(text=f"{group_name} - {task_count} задач", callback_data=f"show_group_tasks_{group_id}_1")])
+
+            message += f"Всего отделов с задачами: {total_groups}"
+
+        elif role == 'Manager':
+            cursor.execute("""
+                SELECT t.id as task_id, t.task_title, u.userToken, u.fullname
+                FROM task t
+                JOIN user u ON t.task_assignee_id = u.id
+                WHERE t.status != 'Finished' AND u.company_id = ? AND u.group_id = ?
+                LIMIT ? OFFSET ?
+            """, (company_id, group_id, max_task_per_page, offset))
+            tasks = cursor.fetchall()
+
+            total_tasks = len(tasks)
+
+            message += f"Всего не завершенных задач: {total_tasks}"
+
+            for task in tasks:
+                task_id, task_title, userToken, fullname = task
+                inline_keyboard.append([InlineKeyboardButton(text=f"{task_title} - {userToken} {fullname}", callback_data=f"task_{task_id}")])
+        
+        else:
+            cursor.execute("SELECT id as user_id FROM user WHERE userID=?", (callback_query.from_user.id,))
+            user_id = cursor.fetchone()[0]
+            cursor.execute("""
+                SELECT id as task_id, task_title, due_date, priority 
+                FROM task 
+                WHERE task_assignee_id = ?
+                LIMIT ? OFFSET ?
+                """, (user_id, max_task_per_page, offset))
+            tasks = cursor.fetchall()
+
+            total_tasks = len(tasks)
+
+            message += f"Всего не завершенных задач: {total_tasks}"
+            for task in tasks:
+                task_id, task_title, due_date, priority = task
+                inline_keyboard.append([InlineKeyboardButton(text=f"{task_title} - {priority}", callback_data=f"task_{task_id}")])
+
+        # Calculate total pages based on the number of groups for Boss, tasks for others
+        if role == 'Boss':
+            total_pages = (total_groups + max_group_per_page - 1) // max_group_per_page
+        else:
+            total_pages = (total_tasks + max_task_per_page - 1) // max_task_per_page
+
+        # Add pagination buttons if necessary
+        navigation_buttons = []
+        if page > 1:
+            navigation_buttons.append(InlineKeyboardButton(text="⬅️ Предыдущая", callback_data=f"show_task_list_page_{page - 1}"))
+        if page < total_pages:
+            navigation_buttons.append(InlineKeyboardButton(text="Следующая ➡️", callback_data=f"show_task_list_page_{page + 1}"))
+
+        if navigation_buttons:
+            inline_keyboard.append(navigation_buttons)  # Add pagination buttons
+
+        # Add a "Back to main menu" button
+        inline_keyboard.append([InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")])
+        
+        # Create the inline keyboard with task details and navigation buttons
+        keyboard = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+        
+        # Update the message to show task list and buttons
+        await callback_query.message.edit_text(message, reply_markup=keyboard)
+
+@router.callback_query(lambda call: call.data.startswith("show_group_tasks"))
+async def show_group_tasks(callback_query: types.CallbackQuery):
+    # Extract the group_id and page from the callback data
+    data_parts = callback_query.data.split("_")
+    group_id = int(data_parts[-2])  # group_id is the second-to-last part
+    if len(data_parts) > 3 and data_parts[-1].isdigit():
+        page = int(data_parts[-1])
+    else:
+        page = 1  # Default to the first page
+
+    tasks_per_page = 5  # Set the number of tasks to display per page
+    offset = (page - 1) * tasks_per_page
+
+    inline_keyboard = []
+    inline_keyboard.append([InlineKeyboardButton(text="Создать задачу", callback_data="create_task")])
+
+    # Connect to the database to fetch the tasks for the group
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT group_name FROM user_group WHERE id=?", (group_id,))
+        group_name = cursor.fetchone()[0]
+        
+        # Get total task count for pagination
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM task t
+            JOIN user u ON t.task_assignee_id = u.id
+            WHERE u.group_id = ? AND t.status != 'Finished'
+        """, (group_id,))
+        total_tasks = cursor.fetchone()[0]
+
+        # Fetch the tasks for the current page
+        cursor.execute("""
+            SELECT t.id as task_id, t.task_title, u.userToken, u.fullname
+            FROM task t
+            JOIN user u ON t.task_assignee_id = u.id
+            WHERE u.group_id = ? AND t.status != 'Finished'
+            LIMIT ? OFFSET ?
+        """, (group_id, tasks_per_page, offset))
+        tasks = cursor.fetchall()
+
+        # Create a message with the tasks for the group
+        message = f"Список задач для отдела '{group_name}':\n"
+        for task in tasks:
+            task_id, task_title, user_token, fullname = task
+            inline_keyboard.append([InlineKeyboardButton(text=f"{task_title} - {user_token} {fullname}", callback_data=f"task_{task_id}")])
+
+    # Add pagination buttons
+    total_pages = (total_tasks + tasks_per_page - 1) // tasks_per_page
+    navigation_buttons = []
+    if page > 1:
+        navigation_buttons.append(InlineKeyboardButton(text="⬅️ Предыдущая", callback_data=f"show_group_tasks_{group_id}_{page - 1}"))
+    if page < total_pages:
+        navigation_buttons.append(InlineKeyboardButton(text="Следующая ➡️", callback_data=f"show_group_tasks_{group_id}_{page + 1}"))
+
+    if navigation_buttons:
+        inline_keyboard.append(navigation_buttons)
+
+    # Add a "Back to main menu" button
+    inline_keyboard.append([InlineKeyboardButton(text="Назад к списку отделов", callback_data="show_task_list")])
+
+    # Create the inline keyboard with task details and navigation buttons
+    keyboard = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+    
+    # Update the message to show task list and buttons
+    await callback_query.message.edit_text(message, reply_markup=keyboard)
+
+@router.callback_query(lambda call: call.data.startswith("create_task"))
+async def create_task(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.update_data(main_menu_message_id=callback_query.message.message_id)
+    if "user" in callback_query.data:
+        user_id = int(callback_query.data.split("_")[-1])
+        await state.update_data({"assignee_id": user_id})
+        print(f"Assignee ID: {user_id}")
+    
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data="show_task_list")],
+        ]
+    )
+    await callback_query.message.edit_text("Введите название задачи (Максимум 30 символ):", reply_markup=keyboard)
+    await state.set_state(TaskCreationStates.waiting_for_task_title)
+        
+@router.message(StateFilter(TaskCreationStates.waiting_for_task_title))
+async def process_task_title(message: types.Message, state: FSMContext):
+    task_title = message.text
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data="show_task_list")],
+        ]
+    )
+    if len(task_title) > 30:
+        await message.answer("Название задачи не должно превышать 30 символов. Пожалуйста, введите корректное название.", reply_markup=keyboard)
+        return
+    
+    await state.update_data(waiting_for_task_title=task_title)
+    await message.answer("Введите описание задачи:", reply_markup=keyboard)
+    await state.set_state(TaskCreationStates.waiting_for_task_description)
+
+@router.message(StateFilter(TaskCreationStates.waiting_for_task_description))
+async def process_task_description(message: types.Message, state: FSMContext):
+    task_description = message.text
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data="show_task_list")],
+        ]
+    )
+    await state.update_data(waiting_for_task_description=task_description)
+    await message.answer("Введите начальную дату выполнения задачи в формате (дд.мм.гггг):", reply_markup=keyboard)
+    await state.set_state(TaskCreationStates.waiting_for_task_start_date)
+
+@router.message(StateFilter(TaskCreationStates.waiting_for_task_start_date))
+async def process_task_start_date(message: types.Message, state: FSMContext):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data="show_task_list")],
+        ]
+    )
+    task_start_date = message.text
+    try:
+        start_date_obj = datetime.strptime(task_start_date, '%d.%m.%Y')
+        if start_date_obj.day < datetime.now().day - 1 or start_date_obj.month < datetime.now().month or start_date_obj.year < datetime.now().year:
+            raise ValueError("Дата начала не может быть в прошлом.")
+        elif start_date_obj.year > datetime.now().year + 1:
+            raise ValueError(f"Год должен быть {datetime.now().year} или {datetime.now().year + 1}")
+    except ValueError as e:
+        print(f"Некорректный формат даты: {e}")
+        await message.answer(f"{e}\nПожалуйста, введите дату начала в формате дд.мм.гггг.", reply_markup=keyboard)
+        return
+    
+    await state.update_data(waiting_for_task_start_date=task_start_date)
+    await message.answer("Введите конечную дату выполнения задачи в формате (дд.мм.гггг):", reply_markup=keyboard)
+    await state.set_state(TaskCreationStates.waiting_for_task_due_date)
+
+@router.message(StateFilter(TaskCreationStates.waiting_for_task_due_date))
+async def process_task_due_date(message: types.Message, state: FSMContext):
+    task_due_date = message.text
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data="show_task_list")],
+        ]
+    )
+    try:
+        due_date_obj = datetime.strptime(task_due_date, '%d.%m.%Y')
+        data = await state.get_data()
+        task_start_date = data.get("waiting_for_task_start_date")
+        if due_date_obj < datetime.now():
+            raise ValueError("Дата завершения не может быть в прошлом.")
+        elif due_date_obj.year > datetime.now().year + 1:
+            raise ValueError(f"Год должен быть {datetime.now().year} или {datetime.now().year + 1}")
+        elif due_date_obj < datetime.strptime(task_start_date, '%d.%m.%Y'):
+            raise ValueError("Дата завершения не может быть раньше даты начала.")
+    except ValueError as e:
+        print(f"Некорректный формат даты: {e}")
+        await message.answer(f"{e}\n Пожалуйста, введите дату завершения в формате дд.мм.гггг.", reply_markup=keyboard)
+        return
+    
+    await state.update_data(waiting_for_task_due_date=task_due_date)
+    await message.answer("Выберите приоритет задачи:", reply_markup=InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Низкий", callback_data="task_priority_low"),InlineKeyboardButton(text="Средний", callback_data="task_priority_medium"), InlineKeyboardButton(text="Высокий", callback_data="task_priority_high")],
+            [InlineKeyboardButton(text="Назад", callback_data="show_task_list")]
+        ]
+    ))
+    await state.set_state(TaskCreationStates.waiting_for_task_priority)
+
+@router.callback_query(lambda call: call.data.startswith("task_priority_"))
+async def process_task_priority(callback_query: types.CallbackQuery, state: FSMContext):
+    task_priority = callback_query.data.split("_")[-1]
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data="show_task_list")],
+        ]
+    )
+
+    priority = ''
+    if task_priority == "low":
+        priority = "Low"
+    elif task_priority == "medium":
+        priority = "Medium"
+    elif task_priority == "high":
+        priority = "High"
+    
+    await state.update_data({"waiting_for_task_priority": priority})
+    data = await state.get_data()
+    assignee_id = data.get("assignee_id")
+    print(assignee_id)
+
+    data = await state.get_data()
+    task_title = data.get("waiting_for_task_title")
+    task_description = data.get("waiting_for_task_description")
+    task_start_date = data.get("waiting_for_task_start_date")
+    task_due_date = data.get("waiting_for_task_due_date")
+    task_priority = data.get("waiting_for_task_priority")
+
+    if assignee_id is not None:
+        with sqlite3.connect('database.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT userToken, fullname FROM user WHERE id=?", (assignee_id,))
+            user = cursor.fetchone()
+            userToken, fullname = user
+        await state.update_data({"waiting_for_task_assignee": assignee_id})
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="Назад в главное меню", callback_data="back_to_main_menu")]
+                [InlineKeyboardButton(text="Подтвердить создание задачи", callback_data="confirm_task_creation")],
+                [InlineKeyboardButton(text="Отменить создание задачи", callback_data="show_task_list")],
             ]
         )
-        await callback_query.message.edit_text("Вы выбрали: Список задач.", reply_markup=keyboard)
+        await callback_query.message.edit_text(f"Подтвердите создание задачи:\n\nИнформация о задаче:\nНазвание: {task_title}\nОписание: {task_description}\nНачальная дата: {task_start_date}\nКонечная дата: {task_due_date}\nПриоритет: {task_priority}\n\nСотрудник: {userToken} {fullname}\n\n", reply_markup=keyboard)
+    else:
+        await callback_query.message.edit_text("Введите ID(AA000) сотрудника, которому назначается задача:", reply_markup=keyboard)
+        await state.set_state(TaskCreationStates.waiting_for_task_assignee)
+
+@router.message(StateFilter(TaskCreationStates.waiting_for_task_assignee))
+async def process_assignee_id(message: types.Message, state: FSMContext):
+    userToken = message.text
+    data = await state.get_data()
+    task_title = data.get("waiting_for_task_title")
+    task_description = data.get("waiting_for_task_description")
+    task_start_date = data.get("waiting_for_task_start_date")
+    task_due_date = data.get("waiting_for_task_due_date")
+    task_priority = data.get("waiting_for_task_priority")
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data="show_task_list")],
+        ]
+    )
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT role, group_id FROM user WHERE userID=?", (message.from_user.id,))
+        role, group_id = cursor.fetchone()
+        if role == "Boss":
+            cursor.execute("SELECT id as user_id, userID, fullname FROM user WHERE userToken = ?", (userToken,))
+            user = cursor.fetchone()
+        else:
+            cursor.execute("SELECT id as user_id, userID, fullname FROM user WHERE userToken = ? AND group_id = ?", (userToken, group_id))
+            user = cursor.fetchone()
+    if not user:
+        await message.answer("Сотрудник с таким ID не найден. Пожалуйста, введите корректный ID.", reply_markup=keyboard)
+        return
+    elif user[0] == message.from_user.id:
+        await message.answer("Вы не можете назначить задачу самому себе. Пожалуйста, введите ID другого сотрудника.", reply_markup=keyboard)
+        return
+
+    
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Подтвердить создание задачи", callback_data="confirm_task_creation")],
+            [InlineKeyboardButton(text="Отменить создание задачи", callback_data="show_task_list")],
+        ]
+    )
+    user_id, userID, fullname = user
+    await state.update_data(assignee_id=user_id)
+    await message.answer(f"Подтвердите создание задачи:\n\nИнформация о задаче:\nНазвание: {task_title}\nОписание: {task_description}\nНачальная дата: {task_start_date}\nКонечная дата: {task_due_date}\nПриоритет: {task_priority}\n\nСотрудник: {userToken} {fullname}\n\n", reply_markup=keyboard)
+
+@router.callback_query(lambda call: call.data == "confirm_task_creation")
+async def confirm_task_creation(callback_query: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    task_title = data.get("waiting_for_task_title")
+    task_description = data.get("waiting_for_task_description")
+    task_start_date = data.get("waiting_for_task_start_date")
+    task_due_date = data.get("waiting_for_task_due_date")
+    task_priority = data.get("waiting_for_task_priority")
+    task_assignee_id = data.get("assignee_id")
+
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM user WHERE userID=?", (callback_query.from_user.id,))
+        task_owner_id = cursor.fetchone()[0]
+        cursor.execute("SELECT userID FROM user WHERE id=?", (task_assignee_id,))
+        worker_id = cursor.fetchone()[0]
+        cursor.execute("INSERT INTO task (task_title, task_description, start_date, due_date, priority, task_assignee_id, task_owner_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                       (task_title, task_description, task_start_date, task_due_date, task_priority, task_assignee_id, task_owner_id, datetime.now().strftime('%H:%M:%S %d.%m.%Y')))
+        conn.commit()
+
+    # Notify the assignee about the new task
+    
+    await bot.send_message(worker_id, f"Вам назначена новая задача:\n\nНазвание: {task_title}\nОписание: {task_description}\nНачальная дата: {task_start_date}\nКонечная дата: {task_due_date}\nПриоритет: {task_priority}", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Посмотреть задачу", callback_data=f"task_{cursor.lastrowid}")]]))
+    await callback_query.message.answer("Задача успешно создана и назначена сотруднику.", reply_markup=ReplyKeyboardRemove())
+    await show_task_list(callback_query, state)
+
+    await state.clear()  # Ensure the coroutine is awaited
         
+@router.callback_query(lambda call: call.data.startswith("task_"))
+async def show_task_details(callback_query: types.CallbackQuery, state: FSMContext):
+    task_id = int(callback_query.data.split("_")[-1])
+
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+                    SELECT
+                        t.task_title,
+                        t.task_description,
+                        t.start_date,
+                        t.due_date,
+                        t.priority,
+                        t.status,
+                        t.created_at,
+                        t.started_at,
+                        t.paused_at,
+                        t.continued_at,
+                        t.finished_at,
+                        u.userID as assignee_userID,
+                        u.userToken as assignee_userToken,
+                        u.fullname as assignee_fullname,
+                        u2.userID as owner_userID,
+                        u2.userToken as owner_userToken,
+                        u2.fullname as owner_fullname,
+                        u2.role as owner_role
+                    FROM
+                        task t
+                        JOIN user u ON t.task_assignee_id = u.id
+                        JOIN user u2 ON t.task_owner_id = u2.id
+                    WHERE
+                        t.id = ?
+        """, (task_id,))
+        details = cursor.fetchone()
+        if details:
+            task_title, task_description, start_date, due_date, priority, status, created_at, started_at, paused_at, continued_at, finished_at, assignee_userID, assignee_userToken, assignee_fullname, owner_userID, owner_userToken, owner_fullname, owner_role = details
+            message = (
+                f"Информация о задаче:\n"
+                f"Название: {task_title}\n"
+                f"Описание: {task_description}\n"
+                f"Начальная дата: {start_date}\n"
+                f"Конечная дата: {due_date}\n"
+                f"Приоритет: {priority}\n"
+                f"Статус: {status}\n"
+                f"Создана: {created_at}\n"
+                f"Назначена: {assignee_userToken} {assignee_fullname}\n"
+                f"Создатель: {owner_userToken} {owner_fullname} ({"Администратор отдела" if owner_role == "Manager" else "Директор компании"})\n\n"
+            )
+            if started_at is not None:
+                message += f"Начата: {started_at}\n"
+            if paused_at is not None:
+                message += f"Приостановлена: {paused_at}\n"
+            if continued_at is not None:
+                message += f"Продолжена: {continued_at}\n"
+            if finished_at is not None:
+                message += f"Завершена: {finished_at}\n"
+
+            inline_keyboard = []
+            if assignee_userID == callback_query.from_user.id:
+                if status == 'Not started':
+                    inline_keyboard.append([InlineKeyboardButton(text="Начать выполнение", callback_data=f"start_task_{task_id}")])
+                elif status == 'In progress':
+                    inline_keyboard.append([InlineKeyboardButton(text="Пауза", callback_data=f"pause_task_{task_id}"), InlineKeyboardButton(text="Завершить задачу", callback_data=f"finish_task_{task_id}")])
+                elif status == 'Paused':
+                    inline_keyboard.append([InlineKeyboardButton(text="Продолжить", callback_data=f"resume_task_{task_id}")])
+                else:
+                    message += "\nЗадача завершена."
+            elif owner_userID == callback_query.from_user.id:
+                inline_keyboard.append([InlineKeyboardButton(text="Удалить задачу", callback_data=f"delete_task_{task_id}")])
+                inline_keyboard.append([InlineKeyboardButton(text="Изменить данные", callback_data=f"change_task_details_{task_id}")])
+            inline_keyboard.append([InlineKeyboardButton(text="Назад к списку задач", callback_data="show_task_list")])
+
+            keyboard = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+            await callback_query.message.edit_text(message, reply_markup=keyboard)
+            await state.update_data({"main_menu_message_id": callback_query.message.message_id})
+
+@router.callback_query(lambda call: call.data.startswith("start_task_"))
+async def start_task(callback_query: types.CallbackQuery, state: FSMContext):
+    task_id = int(callback_query.data.split("_")[-1])
+
+    # Update task status in the database
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE task SET status = 'In progress', started_at = ? WHERE id = ?", (datetime.now().strftime('%H:%M:%S %d.%m.%Y'), task_id))
+        conn.commit()
+
+    # Update the message
+    await show_task_details(callback_query, state)
+
+    # Send alert
+    await callback_query.answer("Задача начата.", show_alert=True)
+
+@router.callback_query(lambda call: call.data.startswith("pause_task_"))
+async def pause_task(callback_query: types.CallbackQuery, state: FSMContext):
+    task_id = int(callback_query.data.split("_")[-1])
+
+    # Update task status in the database
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE task SET status = 'Paused', paused_at = ? WHERE id = ?", (datetime.now().strftime('%H:%M:%S %d.%m.%Y'), task_id))
+        conn.commit()
+
+    # Update the message
+    await show_task_details(callback_query, state)
+
+    # Send alert
+    await callback_query.answer("Задача приостановлена.", show_alert=True)
+
+@router.callback_query(lambda call: call.data.startswith("resume_task_"))
+async def resume_task(callback_query: types.CallbackQuery, state: FSMContext):
+    task_id = int(callback_query.data.split("_")[-1])
+
+    # Update task status in the database
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE task SET status = 'In progress', continued_at = ? WHERE id = ?", (datetime.now().strftime('%H:%M:%S %d.%m.%Y'), task_id))
+        conn.commit()
+
+    # Update the message
+    await show_task_details(callback_query, state)
+
+    # Send alert
+    await callback_query.answer("Задача продолжена.", show_alert=True)
+
+
+@router.callback_query(lambda call: call.data.startswith("finish_task_"))
+async def finish_task(callback_query: types.CallbackQuery, state: FSMContext):
+    task_id = int(callback_query.data.split("_")[-1])
+
+    # Update task status in the database
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE task SET status = 'Finished', finished_at = ? WHERE id = ?", (datetime.now().strftime('%H:%M:%S %d.%m.%Y'), task_id))
+        conn.commit()
+
+    # Update the message
+    await show_task_details(callback_query, state)
+
+    # Send alert
+    await callback_query.answer("Задача завершена.", show_alert=True)
+
 async def notify_user_on_reload():
     with sqlite3.connect('database.db') as conn:
         cursor = conn.cursor()
@@ -955,7 +1496,7 @@ async def notify_user_on_reload():
             try:
                 await bot.send_message(user[0], "Бот был перезагружен. Пожалуйста, напишите команду /start, чтобы продолжить.")
             except Exception as e:
-                print(f"Error sending message to user {user[0]}: {e}")
+                print(f"Error sending message to user {user[0]}")
 
 dp.include_router(router)
 
