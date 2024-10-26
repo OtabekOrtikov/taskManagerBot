@@ -46,6 +46,15 @@ class TaskCreationStates(StatesGroup):
     waiting_for_task_assignee = State()
     waiting_for_task_confirmation = State()
 
+class TaskChangeStates(StatesGroup):
+    task_id = State()
+    waiting_for_new_task_title = State()
+    waiting_for_new_task_description = State()
+    waiting_for_new_task_start_date = State()
+    waiting_for_new_task_due_date = State()
+    waiting_for_new_task_priority = State()
+    waiting_for_new_task_status = State()
+
 def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
@@ -269,9 +278,7 @@ async def process_phone(message: types.Message, state: FSMContext):
         await ask_for_next_missing_field(message, state)
     else:
         await message.answer("Введите правильный номер телефона в формате +998XXXXXXXXX.")
-        return
-
-    
+        return  
 
 @router.message(StateFilter(RegistrationStates.waiting_for_fullname))
 async def process_fullname(message: types.Message, state: FSMContext):
@@ -335,7 +342,6 @@ async def process_birthdate(message: types.Message, state: FSMContext):
         await bot.send_message(boss_id, f"Новый сотрудник успешно зарегистрирован.\n\nЕго данные:\nПользовательский токен: {userToken}\nИмя: {fullname}\nДолжность: {position}\nДата рождения: {birthdate}\nТелефон: +{phone_number}\nОтдел: {group_name}")
         
         await main_menu(message, state, role)
-
 
 async def ask_for_company(message: types.Message, state: FSMContext):
     await message.answer("Пожалуйста, введите название вашей компании для создания:")
@@ -423,7 +429,6 @@ async def main_menu(message: types.Message, state: FSMContext, role):
         # If no previous main menu message ID is stored, send a new main menu
         sent_message = await message.answer("Главное меню", reply_markup=keyboard)
         await state.update_data(main_menu_message_id=sent_message.message_id)
-
 
 @router.callback_query(lambda call: call.data == "back_to_main_menu")
 async def back_to_main_menu(callback_query: types.CallbackQuery, state: FSMContext):
@@ -755,7 +760,6 @@ async def show_list_of_employees(callback_query: types.CallbackQuery, state: FSM
         await callback_query.message.edit_text("В вашем отделе пока нет сотрудников кроме вас.", reply_markup=keyboard)
     else:
         await callback_query.message.edit_text(f"Список сотрудников (Страница {page}/{total_pages}):", reply_markup=keyboard)
-
 
 @router.callback_query(lambda call: call.data == "referral_links")
 async def show_referral_links(callback_query: types.CallbackQuery, state: FSMContext):
@@ -1183,7 +1187,7 @@ async def process_task_start_date(message: types.Message, state: FSMContext):
     task_start_date = message.text
     try:
         start_date_obj = datetime.strptime(task_start_date, '%d.%m.%Y')
-        if start_date_obj.day < datetime.now().day - 1 or start_date_obj.month < datetime.now().month or start_date_obj.year < datetime.now().year:
+        if start_date_obj.day < datetime.now().day or start_date_obj.month < datetime.now().month or start_date_obj.year < datetime.now().year:
             raise ValueError("Дата начала не может быть в прошлом.")
         elif start_date_obj.year > datetime.now().year + 1:
             raise ValueError(f"Год должен быть {datetime.now().year} или {datetime.now().year + 1}")
@@ -1412,7 +1416,7 @@ async def show_task_details(callback_query: types.CallbackQuery, state: FSMConte
                     inline_keyboard.append([InlineKeyboardButton(text="Продолжить", callback_data=f"resume_task_{task_id}")])
                 else:
                     message += "\nЗадача завершена."
-            elif owner_userID == callback_query.from_user.id:
+            elif owner_userID == callback_query.from_user.id or owner_role == 'Boss':
                 inline_keyboard.append([InlineKeyboardButton(text="Удалить задачу", callback_data=f"delete_task_{task_id}")])
                 inline_keyboard.append([InlineKeyboardButton(text="Изменить данные", callback_data=f"change_task_details_{task_id}")])
             inline_keyboard.append([InlineKeyboardButton(text="Назад к списку задач", callback_data="show_task_list")])
@@ -1445,7 +1449,13 @@ async def pause_task(callback_query: types.CallbackQuery, state: FSMContext):
     # Update task status in the database
     with sqlite3.connect('database.db') as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE task SET status = 'Paused', paused_at = ? WHERE id = ?", (datetime.now().strftime('%H:%M:%S %d.%m.%Y'), task_id))
+        cursor.execute("SELECT paused_at FROM task WHERE id = ?", (task_id,))
+        paused_at = cursor.fetchone()[0]
+        if paused_at is None:
+            cursor.execute("UPDATE task SET status = 'Paused', paused_at = ? WHERE id = ?", (datetime.now().strftime('%H:%M:%S %d.%m.%Y'), task_id))
+        else:
+            data = f"{paused_at}\n{datetime.now().strftime('%H:%M:%S %d.%m.%Y')}"
+            cursor.execute("UPDATE task SET status = 'Paused', paused_at = ? WHERE id = ?", (data, task_id))
         conn.commit()
 
     # Update the message
@@ -1461,7 +1471,13 @@ async def resume_task(callback_query: types.CallbackQuery, state: FSMContext):
     # Update task status in the database
     with sqlite3.connect('database.db') as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE task SET status = 'In progress', continued_at = ? WHERE id = ?", (datetime.now().strftime('%H:%M:%S %d.%m.%Y'), task_id))
+        cursor.execute("SELECT continued_at FROM task WHERE id = ?", (task_id,))
+        continued_at = cursor.fetchone()[0]
+        if continued_at is None:
+            cursor.execute("UPDATE task SET status = 'Paused', continued_at = ? WHERE id = ?", (datetime.now().strftime('%H:%M:%S %d.%m.%Y'), task_id))
+        else:
+            data = f"{continued_at}\n{datetime.now().strftime('%H:%M:%S %d.%m.%Y')}"
+            cursor.execute("UPDATE task SET status = 'Paused', continued_at = ? WHERE id = ?", (data, task_id))
         conn.commit()
 
     # Update the message
@@ -1469,7 +1485,6 @@ async def resume_task(callback_query: types.CallbackQuery, state: FSMContext):
 
     # Send alert
     await callback_query.answer("Задача продолжена.", show_alert=True)
-
 
 @router.callback_query(lambda call: call.data.startswith("finish_task_"))
 async def finish_task(callback_query: types.CallbackQuery, state: FSMContext):
@@ -1487,6 +1502,270 @@ async def finish_task(callback_query: types.CallbackQuery, state: FSMContext):
     # Send alert
     await callback_query.answer("Задача завершена.", show_alert=True)
 
+@router.callback_query(lambda call: call.data.startswith("delete_task_"))
+async def delete_task(callback_query: types.CallbackQuery, state: FSMContext):
+    task_id = int(callback_query.data.split("_")[-1])
+
+    # Delete the task from the database
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT task_title, task_assignee_id FROM task WHERE id = ?", (task_id,))
+        task_title, assignee_id = cursor.fetchone()
+        cursor.execute("SELECT userID FROM user WHERE id = ?", (assignee_id,))
+        assignee_userID = cursor.fetchone()[0]
+        cursor.execute("DELETE FROM task WHERE id = ?", (task_id,))
+        conn.commit()
+
+    # Send alert
+    await bot.send_message(assignee_userID, f"Ваша задача '{task_title}' была удалена администратором.")
+    await callback_query.answer("Задача удалена.", show_alert=True)
+
+    # Show the task list
+    await show_task_list(callback_query, state)
+
+@router.callback_query(lambda call: call.data.startswith("change_task_details_"))
+async def change_task_details(callback_query, state: FSMContext):
+    # Retrieve task_id from the state context
+    task_id = int(callback_query.data.split("_")[-1])
+
+    if isinstance(callback_query, types.CallbackQuery):
+        user_id = callback_query.from_user.id
+    else:
+        user_id = callback_query.from_user.id  # This ensures the correct user is used
+
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT task_owner_id FROM task WHERE id = ?", (task_id,))
+        owner_id = cursor.fetchone()[0]
+        cursor.execute("SELECT userID, role FROM user WHERE id = ?", (owner_id,))
+        owner_userID, owner_role = cursor.fetchone()
+
+    if owner_userID != user_id or owner_role != "Boss":
+        await callback_query.answer("Вы не можете изменять данные задачи.", show_alert=True)
+        return
+
+    # Task details modification keyboard
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Изменить название", callback_data=f"change_task_title_{task_id}")],
+            [InlineKeyboardButton(text="Изменить описание", callback_data=f"change_task_description_{task_id}")],
+            [InlineKeyboardButton(text="Изменить начальную дату", callback_data=f"change_task_start_date_{task_id}")],
+            [InlineKeyboardButton(text="Изменить конечную дату", callback_data=f"change_task_due_date_{task_id}")],
+            [InlineKeyboardButton(text="Изменить приоритет", callback_data=f"change_task_priority_{task_id}")],
+            [InlineKeyboardButton(text="Назад", callback_data=f"task_{task_id}")],
+        ]
+    )
+
+    if isinstance(callback_query, types.CallbackQuery):
+        await callback_query.message.edit_text("Выберите параметр для изменения:", reply_markup=keyboard)
+    else:
+        await callback_query.answer("Выберите параметр для изменения:", reply_markup=keyboard)
+
+@router.callback_query(lambda call: call.data.startswith("change_task_title_"))
+async def change_task_title(callback_query: types.CallbackQuery, state: FSMContext):
+    task_id = int(callback_query.data.split("_")[-1])
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data=f"task_{task_id}")],
+        ]
+    )
+    await callback_query.message.edit_text("Введите новое название задачи (Максимум 30 символов):", reply_markup=keyboard)
+    await state.update_data({"task_id":task_id})
+    await state.set_state(TaskChangeStates.waiting_for_new_task_title)
+
+@router.message(StateFilter(TaskChangeStates.waiting_for_new_task_title))
+async def process_new_task_title(message: types.Message, state: FSMContext):
+    new_task_title = message.text
+    data = await state.get_data()
+    task_id = data.get("task_id")
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data=f"task_{task_id}")],
+        ]
+    )
+    if len(new_task_title) > 30:
+        await message.answer("Название задачи не должно превышать 30 символов. Пожалуйста, введите корректное название.", reply_markup=keyboard)
+        return
+
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE task SET task_title = ? WHERE id = ?", (new_task_title, task_id))
+        conn.commit()
+
+    await message.answer("Новое название задачи сохранено.", show_alert=True)
+    await main_menu(message, state)
+
+@router.callback_query(lambda call: call.data.startswith("change_task_description_"))
+async def change_task_description(callback_query: types.CallbackQuery, state: FSMContext):
+    task_id = int(callback_query.data.split("_")[-1])
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data=f"task_{task_id}")],
+        ]
+    )
+    await callback_query.message.edit_text("Введите новое описание задачи:", reply_markup=keyboard)
+    await state.update_data({"task_id":task_id})
+    await state.set_state(TaskChangeStates.waiting_for_new_task_description)
+
+@router.message(StateFilter(TaskChangeStates.waiting_for_new_task_description))
+async def process_new_task_description(message: types.Message, state: FSMContext):
+    new_task_description = message.text
+    data = await state.get_data()
+    task_id = data.get("task_id")
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data=f"task_{task_id}")],
+        ]
+    )
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE task SET task_description = ? WHERE id = ?", (new_task_description, task_id))
+        conn.commit()
+
+    await message.answer("Новое описание задачи сохранено.", show_alert=True)
+    await main_menu(message, state)
+
+@router.callback_query(lambda call: call.data.startswith("change_task_start_date_"))
+async def change_task_start_date(callback_query: types.CallbackQuery, state: FSMContext):
+    task_id = int(callback_query.data.split("_")[-1])
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data=f"task_{task_id}")],
+        ]
+    )
+    await callback_query.message.edit_text("Введите новую начальную дату выполнения задачи в формате (дд.мм.гггг):", reply_markup=keyboard)
+    await state.update_data({"task_id":task_id})
+    await state.set_state(TaskChangeStates.waiting_for_new_task_start_date)
+
+@router.message(StateFilter(TaskChangeStates.waiting_for_new_task_start_date))
+async def process_new_task_start_date(message: types.Message, state: FSMContext):
+    new_task_start_date = message.text
+    data = await state.get_data()
+    task_id = data.get("task_id")
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data="show_task_list")],
+        ]
+    )
+    try:
+        new_start_date_obj = datetime.strptime(new_task_start_date, '%d.%m.%Y')
+
+        # Check if the new start date is valid
+        if new_start_date_obj < datetime.now():
+            raise ValueError("Дата начала не может быть в прошлом.")
+        elif new_start_date_obj.year > datetime.now().year + 1:
+            raise ValueError(f"Год должен быть {datetime.now().year} или {datetime.now().year + 1}")
+
+    except ValueError as e:
+        await message.answer(f"{e}\nПожалуйста, введите дату начала в формате дд.мм.гггг.", reply_markup=keyboard)
+        return
+
+    # Fetch the current start and due date from the database
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT start_date, due_date, assignee_user_id FROM task WHERE id = ?", (task_id,))
+        result = cursor.fetchone()
+
+        if result:
+            old_start_date_str, old_due_date_str, assignee_user_id = result
+            old_start_date = datetime.strptime(old_start_date_str, '%d.%m.%Y')
+            old_due_date = datetime.strptime(old_due_date_str, '%d.%m.%Y')
+
+            # Calculate the difference between old start date and due date
+            date_difference = old_due_date - old_start_date
+
+            # Update the due date based on the new start date
+            new_due_date_obj = new_start_date_obj + date_difference
+
+            # Update the task with the new start date and adjusted due date
+            cursor.execute(
+                "UPDATE task SET start_date = ?, due_date = ? WHERE id = ?",
+                (new_start_date_obj.strftime('%d.%m.%Y'), new_due_date_obj.strftime('%d.%m.%Y'), task_id)
+            )
+            conn.commit()
+
+            # Inform the assignee if the start date was changed
+            cursor.execute("SELECT telegram_id FROM user WHERE id = ?", (assignee_user_id,))
+            assignee = cursor.fetchone()
+            if assignee:
+                assignee_telegram_id = assignee[0]
+                await message.bot.send_message(
+                    chat_id=assignee_telegram_id,
+                    text=f"Начальная дата вашей задачи была изменена на {new_task_start_date}. Новая дата завершения: {new_due_date_obj.strftime('%d.%m.%Y')}."
+                )
+
+    await message.answer(f"Новая начальная дата задачи сохранена: {new_task_start_date}. Новая дата завершения: {new_due_date_obj.strftime('%d.%м.%Y')}.", show_alert=True)
+    await main_menu(message, state)
+
+@router.callback_query(lambda call: call.data.startswith("change_task_due_date_"))
+async def change_task_due_date(callback_query: types.CallbackQuery, state: FSMContext):
+    task_id = int(callback_query.data.split("_")[-1])
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data=f"task_{task_id}")],
+        ]
+    )
+    await callback_query.message.edit_text("Введите новую конечную дату выполнения задачи в формате (дд.мм.гггг):", reply_markup=keyboard)
+    await state.update_data({"task_id":task_id})
+    await state.set_state(TaskChangeStates.waiting_for_new_task_due_date)
+
+@router.message(StateFilter(TaskChangeStates.waiting_for_new_task_due_date))
+async def process_new_task_due_date(message: types.Message, state: FSMContext):
+    new_task_due_date = message.text
+    data = await state.get_data()
+    task_id = data.get("task_id")
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Назад", callback_data="show_task_list")],
+        ]
+    )
+    try:
+        new_due_date_obj = datetime.strptime(new_task_due_date, '%d.%m.%Y')
+
+        # Check if the new due date is valid
+        if new_due_date_obj < datetime.now():
+            raise ValueError("Дата завершения не может быть в прошлом.")
+        elif new_due_date_obj.year > datetime.now().year + 1:
+            raise ValueError(f"Год должен быть {datetime.now().year} или {datetime.now().year + 1}")
+
+    except ValueError as e:
+        await message.answer(f"{e}\nПожалуйста, введите дату завершения в формате дд.мм.гггг.", reply_markup=keyboard)
+        return
+
+    # Fetch the current start and due date from the database
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT start_date FROM task WHERE id = ?", (task_id,))
+        result = cursor.fetchone()
+
+        if result:
+            old_start_date_str = result[0]
+            old_start_date = datetime.strptime(old_start_date_str, '%d.%m.%Y')
+
+            # Check that the new due date is not before the start date
+            if new_due_date_obj < old_start_date:
+                await message.answer(f"Дата завершения не может быть раньше даты начала задачи ({old_start_date.strftime('%d.%m.%Y')}).", reply_markup=keyboard)
+                return
+
+            # Update only the due date
+            cursor.execute(
+                "UPDATE task SET due_date = ? WHERE id = ?",
+                (new_due_date_obj.strftime('%d.%m.%Y'), task_id)
+            )
+            conn.commit()
+
+    # Inform the user that the new due date has been saved
+    await message.answer(f"Новая конечная дата задачи сохранена: {new_task_due_date}.", reply_markup=keyboard)
+    await main_menu(message, state)
+    
 async def notify_user_on_reload():
     with sqlite3.connect('database.db') as conn:
         cursor = conn.cursor()
