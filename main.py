@@ -92,7 +92,8 @@ Salom! Men sizga loyihalarni boshqarishda yordam beraman. Boshlash uchun tilni t
     async with db_pool.acquire() as connection:
         if user is None:
             await connection.execute("INSERT INTO users (user_id, role_id) VALUES ($1, 1) ON CONFLICT (user_id) DO NOTHING", user_id)
-            await message.answer(text, reply_markup=keyboard)
+            send_message = await message.answer(text, reply_markup=keyboard)
+            await state.update_data(main_menu_message_id=send_message.message_id)
         else:
             await navigate_to_main_menu(user_id, message.chat.id, state)
 
@@ -101,7 +102,12 @@ async def set_lang(callback: types.CallbackQuery, state: FSMContext):
     db_pool = get_db_pool()
     lang = callback.data.split("_")[1]
     user_id = callback.from_user.id
+    data = await state.get_data()
+    main_menu_message_id = data.get("main_menu_message_id")
 
+    if main_menu_message_id != callback.message.message_id:
+        await callback.answer("This button is no longer active.")
+        return
     # Respond to the callback query to avoid the alert
     await callback.answer()
 
@@ -307,7 +313,7 @@ async def finish_department_creation(callback: types.CallbackQuery, state: FSMCo
     main_menu_message_id = data.get("main_menu_message_id")
 
     if main_menu_message_id != callback.message.message_id + 1:
-        await callback.answer("This button is no longer active.", show_alert=True)
+        await callback.answer("This button is no longer active.")
         return
     
     await state.clear()  # Exit the department creation loop
@@ -383,7 +389,7 @@ async def back_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     last_button_message_id = data.get("main_menu_message_id")
 
     if callback.message.message_id != last_button_message_id:
-        await callback.answer("This button is no longer active.", show_alert=True)
+        await callback.answer("This button is no longer active.")
         return
     """Handles navigating back to the main menu, using role-based logic."""
     await callback.message.delete()  # Optionally delete the previous message
