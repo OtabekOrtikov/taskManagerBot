@@ -18,6 +18,7 @@ from company.show_company import show_company
 from company.list_company_workers import list_workers
 from company.show_departments import show_departments
 from company.list_department_workers import list_department_workers
+from company.referal_links import show_referal_links
 
 # Initialize bot and storage
 bot = Bot(token=API_TOKEN)
@@ -29,6 +30,7 @@ router.callback_query.register(show_company, F.data == "company")
 router.callback_query.register(list_workers, F.data.startswith("list_workers"))
 router.callback_query.register(show_departments, F.data.startswith("departments"))
 router.callback_query.register(list_department_workers, F.data.startswith("show_department_"))
+router.callback_query.register(show_referal_links, F.data == "referral_links")
 
 # Define bot states
 class RegistrationStates(StatesGroup):
@@ -258,7 +260,7 @@ async def process_department_name(message: types.Message, state: FSMContext):
 
     if lang == 'ru':
         department_msg = (
-            f"Отдел '{department_name}' успешно создан! Вы можете продолжить добавлять отделы или нажать 'Завершить' для выхода. {message.message_id}"
+            f"Отдел '{department_name}' успешно создан! Вы можете продолжить добавлять отделы или нажать 'Завершить' для выхода."
         )
         continue_text = "Продолжить"
         finish_text = "Завершить"
@@ -286,7 +288,7 @@ async def continue_department_creation(callback: types.CallbackQuery, state: FSM
     main_menu_message_id = data.get("main_menu_message_id")
 
     if main_menu_message_id != callback.message.message_id + 1:
-        await callback.answer(f"This button is no longer active.{callback.message.message_id}", show_alert=True)
+        await callback.answer(f"This button is no longer active.", show_alert=True)
         return
 
     if lang == 'ru':
@@ -307,12 +309,35 @@ async def finish_department_creation(callback: types.CallbackQuery, state: FSMCo
     if main_menu_message_id != callback.message.message_id + 1:
         await callback.answer("This button is no longer active.", show_alert=True)
         return
-
+    
     await state.clear()  # Exit the department creation loop
+
+    async with get_db_pool().acquire() as connection:
+        company_id = await connection.fetchval("SELECT company_id FROM users WHERE user_id = $1", callback.from_user.id)
+        departments = await connection.fetch("SELECT * FROM department WHERE company_id = $1", company_id)
+    
+    keyboard = []
+
     if lang == 'ru':
-        await callback.message.edit_text("Создание отделов завершено.")
+        for department in departments:
+            referal_link = f"https://t.me/{BOT_USERNAME}?start={company_id}_group={department['id']}"
+            share_link = f"https://t.me/share/url?url={referal_link}&text=Ребята, нажмите, пожалуйста, на ссылку, чтобы получить задачу от начальства."
+            keyboard.append([InlineKeyboardButton(text=f"Отдел: {department['department_name']}", url=share_link)])
+        await callback.message.edit_text("""
+Теперь отправьте реферальную ссылку руководителю этого отдела. Он добавит всех участников этой группы или Вы сами можете добавить участников нажимая следующую кнопку с названием отдела. В кнопках указаны названия отделов.
+
+P.s: Первый кто зайдет по этой ссылке будет руководителем. Но не переживай, в любой момент можете изменить должность сотрудников в настройках.""",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        )
     else:
-        await callback.message.edit_text("Bo‘lim yaratish yakunlandi.")
+        for department in departments:
+            referal_link = f"https://t.me/{BOT_USERNAME}?start={company_id}_group={department['id']}"
+            share_link = f"https://t.me/share/url?url={referal_link}&text=Yigitlar, boshliqdan vazifa olish uchun quyidagi havolaga kiring."
+            keyboard.append([InlineKeyboardButton(text=f"Bo'lim: {department['department_name']}", url=share_link)])
+        await callback.message.edit_text("""
+Endi bu bo‘lim rahbariga tavsiya havolani yuboring. U bu guruhdagi barcha a'zolarni qo‘shadi yoki siz o‘ziz qo‘shishingiz mumkin. Bo‘lim nomi tugmasini bosing.
+                                         
+P.s: Bu havolaga birinchi kiringan odam bo‘lib qoladi. Lekin xavotir bo‘lmang, har qanday vaqtda xodimlar vazifalarini sozlamalarda o‘zgartirishingiz mumkin.""")
 
     await navigate_to_main_menu(callback.from_user.id, callback.message.chat.id, state)
 
@@ -331,7 +356,7 @@ async def navigate_to_main_menu(user_id: int, chat_id: int, state: FSMContext):
         await bot.send_message(chat_id, "User not found. Please register again with /start.")
         return
 
-    role, lang = user['role_id'], user['lang']
+    lang = user['lang']
 
     # Set up menu text and dynamically create keyboard based on role and language
     main_menu_text = "Главное меню" if lang == 'ru' else "Asosiy menyum"
