@@ -1,7 +1,7 @@
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from db_utils import get_user, get_db_pool
+from database.db_utils import get_user, get_db_pool
 from btns import back_to_company, next_page, back_page
 
 async def show_company_tasks(callback: types.CallbackQuery, state: FSMContext):

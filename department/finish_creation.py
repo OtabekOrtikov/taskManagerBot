@@ -1,6 +1,6 @@
 from aiogram.fsm.context import FSMContext
 from config import BOT_USERNAME
-from db_utils import get_user_lang, get_db_pool
+from database.db_utils import get_user_lang, get_db_pool
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 

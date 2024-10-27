@@ -1,6 +1,6 @@
 from aiogram import types
 
-from db_utils import get_db_pool
+from database.db_utils import get_db_pool
 
 async def delete_db(message: types.Message):
     db_pool = get_db_pool()

@@ -2,7 +2,7 @@ from aiogram import types, Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from db_utils import get_db_pool, get_user
+from database.db_utils import get_db_pool, get_user
 from menu.main_menu import navigate_to_main_menu
 
 router = Router()

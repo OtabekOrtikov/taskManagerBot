@@ -2,7 +2,7 @@ from aiogram import types
 from aiogram.fsm.context import FSMContext
 
 from btns import company_menu_btns
-from db_utils import *
+from database.db_utils import *
 
 async def show_company(callback: types.CallbackQuery, state: FSMContext):
     db_pool = get_db_pool()

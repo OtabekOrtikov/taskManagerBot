@@ -1,10 +1,13 @@
-from aiogram import types
+from aiogram import types, Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database.db_utils import get_user, get_db_pool
 from btns import back_to_company, back_page, next_page
 
-from config import PAGE_SIZE
+router = Router()
+
+# Max items per page
+ITEMS_PER_PAGE = 5
 
 async def list_workers(callback: types.CallbackQuery, state: FSMContext):
     db_pool = get_db_pool()
@@ -29,7 +32,7 @@ async def list_workers(callback: types.CallbackQuery, state: FSMContext):
 
     # Calculate total pages
     total_workers = len(workers)
-    total_pages = (total_workers + PAGE_SIZE - 1) // PAGE_SIZE
+    total_pages = (total_workers + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
 
     # Adjust the page if out of bounds
     if page < 1:
@@ -38,8 +41,8 @@ async def list_workers(callback: types.CallbackQuery, state: FSMContext):
         page = total_pages
 
     # Paginate workers
-    start = (page - 1) * PAGE_SIZE
-    end = start + PAGE_SIZE
+    start = (page - 1) * ITEMS_PER_PAGE
+    end = start + ITEMS_PER_PAGE
     current_workers = workers[start:end]
 
     # Build message text and keyboard

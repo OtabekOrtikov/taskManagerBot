@@ -1,6 +1,6 @@
 from aiogram.fsm.context import FSMContext
 from config import API_TOKEN
-from db_utils import get_db_pool
+from database.db_utils import get_db_pool
 from aiogram import Bot
 from btns import main_menu_btns
 

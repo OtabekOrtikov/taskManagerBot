@@ -2,7 +2,7 @@ from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_USERNAME
-from db_utils import get_user, get_db_pool
+from database.db_utils import get_user, get_db_pool
 from btns import back_to_main
 
 async def show_referal_links(callback: types.CallbackQuery, state: FSMContext):

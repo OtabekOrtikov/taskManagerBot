@@ -6,7 +6,7 @@ import asyncio
 from commands.back_to_main import back_to_main_menu
 from commands.deletedb import delete_db
 from commands.start import start_command
-from db_utils import *
+from database.db_utils import *
 
 from config import API_TOKEN
 

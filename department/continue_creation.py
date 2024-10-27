@@ -1,5 +1,5 @@
 from aiogram.fsm.context import FSMContext
-from db_utils import get_user_lang
+from database.db_utils import get_user_lang
 from aiogram import types
 
 from states import DepartmentCreation

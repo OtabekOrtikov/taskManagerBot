@@ -1,6 +1,6 @@
 from aiogram import types
 from aiogram.fsm.context import FSMContext
-from db_utils import get_db_pool
+from database.db_utils import get_db_pool
 from states import RegistrationStates
 
 async def set_lang(callback: types.CallbackQuery, state: FSMContext):
