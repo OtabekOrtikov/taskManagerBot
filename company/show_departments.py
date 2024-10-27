@@ -1,10 +1,10 @@
-from aiogram import types, Router, F
+from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from db_utils import get_user, get_db_pool
 from btns import back_to_company, back_page, next_page
 
-PAGE_SIZE = 5
+from config import PAGE_SIZE
 
 async def show_departments(callback: types.CallbackQuery, state: FSMContext):
     db_pool = get_db_pool()

@@ -1,4 +1,4 @@
-from aiogram import types, Router, F
+from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from db_utils import get_user, get_db_pool
