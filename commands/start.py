@@ -51,7 +51,7 @@ Salom! Men sizga loyihalarni boshqarishda yordam beraman. Boshlash uchun tilni t
     # Correct usage of db_pool.acquire with parentheses
     async with db_pool.acquire() as connection:
         if user is None:
-            await connection.execute("INSERT INTO users (user_id, role_id) VALUES ($1, 1) ON CONFLICT (user_id) DO NOTHING", user_id)
+            await connection.execute("INSERT INTO users (user_id, username, role_id) VALUES ($1, $2, 1) ON CONFLICT (user_id) DO NOTHING", user_id, message.from_user.username)
             send_message = await message.answer(text, reply_markup=keyboard)
             await state.update_data(main_menu_message_id=send_message.message_id)
         else:
