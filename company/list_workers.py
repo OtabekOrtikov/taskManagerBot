@@ -18,7 +18,7 @@ async def list_workers(callback: types.CallbackQuery, state: FSMContext):
     last_button_message_id = message_data.get("main_menu_message_id")
 
     if callback.message.message_id != last_button_message_id:
-        await callback.answer("This button is no longer active.", show_alert=True)
+        await callback.answer("This button is no longer active.")
         return
 
     # Extract current page from callback data

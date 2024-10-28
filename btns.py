@@ -28,29 +28,50 @@ main_menu_btns = {
     ]),
 }
 
-company_menu_btns = {
-    "ru": InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Список отделов", callback_data="departments")],
-        [InlineKeyboardButton(text="Список сотрудников", callback_data="list_workers")],
-        [InlineKeyboardButton(text="Список задач", callback_data="show_company_tasks")],
-        [InlineKeyboardButton(text="Назад", callback_data="back_to_main_menu")]
-    ]),
-    "uz": InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Bo'limlar ro'yxati", callback_data="departments")],
-        [InlineKeyboardButton(text="Xodimlar ro'yxati", callback_data="list_workers")],
-        [InlineKeyboardButton(text="Vazifalar ro'yxati", callback_data="show_company_tasks")],
-        [InlineKeyboardButton(text="Orqaga", callback_data="back_to_main_menu")]
-    ]),
-}
-
 back_to_main = {
     "ru": InlineKeyboardButton(text="Назад", callback_data="back_to_main_menu"),
     "uz": InlineKeyboardButton(text="Orqaga", callback_data="back_to_main_menu")
 }
 
+company_menu_btns = {
+    "ru": InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Список отделов", callback_data="departments")],
+        [InlineKeyboardButton(text="Список сотрудников", callback_data="list_workers")],
+        [InlineKeyboardButton(text="Список задач", callback_data="show_company_tasks")],
+        [back_to_main["ru"]]
+    ]),
+    "uz": InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Bo'limlar ro'yxati", callback_data="departments")],
+        [InlineKeyboardButton(text="Xodimlar ro'yxati", callback_data="list_workers")],
+        [InlineKeyboardButton(text="Vazifalar ro'yxati", callback_data="show_company_tasks")],
+        [back_to_main["uz"]]
+    ]),
+}
+
+
 back_to_company = {
     "ru": InlineKeyboardButton(text="Назад", callback_data="company"),
     "uz": InlineKeyboardButton(text="Orqaga", callback_data="company")
+}
+
+edit_user_info_btns = {
+    "ru": [
+        {"text": "Изменить имя", "callback_data": "edit_fullname"},
+        {"text": "Изменить телефон", "callback_data": "edit_phone"},
+        {"text": "Изменить дату рождения", "callback_data": "edit_birthdate"},
+        {"text": "Изменить язык интерфейса", "callback_data": "edit_language"}
+    ],
+    "uz": [
+        {"text": "Ismni o'zgartirish", "callback_data": "edit_fullname"},
+        {"text": "Telefon raqamini o'zgartirish", "callback_data": "edit_phone"},
+        {"text": "Tug'ilgan kunni o'zgartirish", "callback_data": "edit_birthdate"},    
+        {"text": "Bot tili o'zgartirish", "callback_data": "edit_language"},\
+    ]
+}
+
+back_to_settings = {
+    "ru": {"text": "Назад", "callback_data": "settings"},
+    "uz": {"text": "Orqaga", "callback_data": "settings"}
 }
 
 back_page = {
@@ -61,4 +82,9 @@ back_page = {
 next_page = {
     "ru": "Следующий ➡️",
     "uz": "Keyingi ➡️"
+}
+
+settings_menu_btns = {
+    "ru": InlineKeyboardButton(text="Изменить информацию", callback_data="edit_user_info"),
+    "uz": InlineKeyboardButton(text="Ma'lumotlarni o'zgartirish", callback_data="edit_user_info")
 }

@@ -1,6 +1,6 @@
 import datetime
 from aiogram.fsm.context import FSMContext
-from database.db_utils import get_db_pool, get_user_lang
+from database.db_utils import get_db_pool, get_user, get_user_lang
 from states import CompanyCreation
 from aiogram import types
 
@@ -8,7 +8,10 @@ async def process_birthdate(message: types.Message, state: FSMContext):
     db_pool = get_db_pool()
     birthdate = message.text
     user_id = message.from_user.id
+    user = await get_user(user_id)
     lang = await get_user_lang(message.from_user.id)
+
+    print(f"Received birthdate: {birthdate} from user_id: {user_id}")
 
     try:
         date_obj = datetime.datetime.strptime(birthdate, "%d.%m.%Y")
@@ -40,7 +43,7 @@ async def process_birthdate(message: types.Message, state: FSMContext):
             await message.answer("Tug'ilgan kun muvaffaqiyatli saqlandi.")
 
         # Proceed to the next state
-        if user_role == 1:
+        if user_role == 1 and user['company_id'] is None:
             await state.set_state(CompanyCreation.company_name)
             if lang == 'ru':
                 await message.answer("Теперь введите название вашей компании")

@@ -13,3 +13,15 @@ class DepartmentCreation(StatesGroup):
 
 class MainMessage(StatesGroup):
     main_menu_message_id = State()
+
+class UserChanges(StatesGroup):
+    fullname = State()
+    phone_number = State()
+    birthdate = State()
+    language = State()  
+
+class CompanyChanges(StatesGroup):
+    company_name = State()
+
+class DepartmentChanges(StatesGroup):
+    department_name = State()

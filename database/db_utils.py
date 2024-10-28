@@ -33,7 +33,8 @@ async def init_db():
                     lang VARCHAR(5) DEFAULT 'ru',
                     role_id INT REFERENCES role(id) ON DELETE SET NULL,
                     department_id INT REFERENCES department(id) ON DELETE SET NULL,
-                    company_id INT REFERENCES company(id) ON DELETE SET NULL
+                    company_id INT REFERENCES company(id) ON DELETE SET NULL,
+                    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
                 CREATE TABLE IF NOT EXISTS project (
                     id SERIAL PRIMARY KEY,

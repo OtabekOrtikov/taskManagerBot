@@ -19,11 +19,18 @@ from company.referal_links import show_referal_links
 from department.continue_creation import continue_department_creation
 from department.department_creation import process_department_name
 from department.finish_creation import finish_department_creation
+from registration.birthdate import process_birthdate
 from registration.fullname import process_fullname
 from registration.lang import set_lang
 from registration.phoneNumber import process_phone_number
 
-from states import CompanyCreation, DepartmentCreation, RegistrationStates
+from settings.change_birthdate import changing_birthdate, edit_birthdate
+from settings.change_fullname import changing_fullname, edit_fullname
+from settings.change_lang import changing_lang, edit_lang
+from settings.change_phone import changing_phone_number, edit_phone
+from settings.edit_user import edit_user
+from settings.settings import show_settings
+from states import *
 
 # Initialize bot and storage
 bot = Bot(token=API_TOKEN)
@@ -31,6 +38,7 @@ storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 router = Router()
 
+# callback queries
 router.callback_query.register(continue_department_creation, F.data == "continue_department_creation")
 router.callback_query.register(finish_department_creation, F.data == "finish_department_creation")
 router.callback_query.register(show_company, F.data == "company")
@@ -40,10 +48,25 @@ router.callback_query.register(list_department_workers, F.data.startswith("show_
 router.callback_query.register(show_referal_links, F.data == "referral_links")
 router.callback_query.register(set_lang, F.data.startswith("lang_"))
 router.callback_query.register(back_to_main_menu, F.data == "back_to_main_menu")
+router.callback_query.register(show_settings, F.data == "settings")
+router.callback_query.register(edit_user, F.data == "edit_user_info")
+router.callback_query.register(edit_fullname, F.data == "edit_fullname")
+router.callback_query.register(edit_phone, F.data == "edit_phone")
+router.callback_query.register(edit_birthdate, F.data == "edit_birthdate")
+router.callback_query.register(edit_lang, F.data == "edit_language")
+router.callback_query.register(changing_lang, F.data.startswith("change_lang_"))
+
+# state messages
 router.message(StateFilter(RegistrationStates.fullname))(process_fullname)
 router.message(StateFilter(RegistrationStates.phone_number))(process_phone_number)
+router.message(StateFilter(RegistrationStates.birthdate))(process_birthdate)
 router.message(StateFilter(CompanyCreation.company_name))(process_company_name)
 router.message(StateFilter(DepartmentCreation.department_name))(process_department_name)
+router.message(StateFilter(UserChanges.fullname))(changing_fullname)
+router.message(StateFilter(UserChanges.phone_number))(changing_phone_number)
+router.message(StateFilter(UserChanges.birthdate))(changing_birthdate)
+
+# commands
 router.message(F.text == "/start")(start_command)
 router.message(F.text == "/deletedb")(delete_db)
 

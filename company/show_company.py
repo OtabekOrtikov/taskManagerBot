@@ -11,7 +11,7 @@ async def show_company(callback: types.CallbackQuery, state: FSMContext):
 
     # Check if the callback is from the latest message with the button
     if callback.message.message_id != last_button_message_id:
-        await callback.answer("This button is no longer active.", show_alert=True)
+        await callback.answer("This button is no longer active.")
         return
 
     user_id = callback.from_user.id

@@ -11,7 +11,7 @@ async def continue_department_creation(callback: types.CallbackQuery, state: FSM
     main_menu_message_id = data.get("main_menu_message_id")
 
     if main_menu_message_id != callback.message.message_id + 1:
-        await callback.answer(f"This button is no longer active.", show_alert=True)
+        await callback.answer(f"This button is no longer active.")
         return
 
     if lang == 'ru':
