@@ -3,7 +3,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import StateFilter
 import asyncio
 
-from commands.back_to_main import back_to_main_menu
+from commands.back_main import back_to_main_menu
 from commands.deletedb import delete_db
 from commands.start import start_command
 from database.db_utils import *
