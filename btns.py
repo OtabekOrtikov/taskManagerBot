@@ -29,8 +29,8 @@ main_menu_btns = {
 }
 
 back_to_main = {
-    "ru": InlineKeyboardButton(text="Назад", callback_data="back_to_main_menu"),
-    "uz": InlineKeyboardButton(text="Orqaga", callback_data="back_to_main_menu")
+    "ru": InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main_menu"),
+    "uz": InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_to_main_menu")
 }
 
 company_menu_btns = {
@@ -50,8 +50,8 @@ company_menu_btns = {
 
 
 back_to_company = {
-    "ru": InlineKeyboardButton(text="Назад", callback_data="company"),
-    "uz": InlineKeyboardButton(text="Orqaga", callback_data="company")
+    "ru": InlineKeyboardButton(text="⬅️ Назад", callback_data="company"),
+    "uz": InlineKeyboardButton(text="⬅️ Orqaga", callback_data="company")
 }
 
 edit_user_info_btns = {
@@ -70,8 +70,8 @@ edit_user_info_btns = {
 }
 
 back_to_settings = {
-    "ru": {"text": "Назад", "callback_data": "settings"},
-    "uz": {"text": "Orqaga", "callback_data": "settings"}
+    "ru": {"text": "⬅️ Назад", "callback_data": "settings"},
+    "uz": {"text": "⬅️ Orqaga", "callback_data": "settings"}
 }
 
 back_page = {
@@ -87,4 +87,22 @@ next_page = {
 settings_menu_btns = {
     "ru": InlineKeyboardButton(text="Изменить информацию", callback_data="edit_user_info"),
     "uz": InlineKeyboardButton(text="Ma'lumotlarni o'zgartirish", callback_data="edit_user_info")
+}
+
+company_info_btns = {
+    "ru": InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Изменить название компании", callback_data="edit_company_name")],
+        [InlineKeyboardButton(text="Изменить отделы", callback_data="edit_departments")],
+        [back_to_settings["ru"]]
+    ]),
+    "uz": InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Kompaniya nomini o'zgartirish", callback_data="edit_company_name")],
+        [InlineKeyboardButton(text="Bo'limlarni o'zgartirish", callback_data="edit_departments")],
+        [back_to_settings["uz"]]
+    ])
+}
+
+back_to_edit_company = {
+    "ru": InlineKeyboardButton(text="⬅️ Назад", callback_data="change_company"),
+    "uz": InlineKeyboardButton(text="⬅️ Orqaga", callback_data="change_company")
 }
