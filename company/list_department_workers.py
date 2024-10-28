@@ -22,7 +22,7 @@ async def list_department_workers(callback: types.CallbackQuery, state: FSMConte
     # Extract current page from callback data
     data = callback.data.split("_")
     department_id = int(data[2])
-    page = int(data[-1]) if len(data) > 3 else 1
+    page = int(data[-1]) if len(data) > 2 else 1
 
     async with db_pool.acquire() as connection:
         # Fetch all workers for pagination

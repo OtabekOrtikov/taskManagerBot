@@ -17,7 +17,8 @@ async def init_db():
                 CREATE TABLE IF NOT EXISTS department (
                     id SERIAL PRIMARY KEY,
                     department_name VARCHAR(255) NOT NULL,
-                    company_id INT REFERENCES company(id) ON DELETE SET NULL
+                    company_id INT REFERENCES company(id) ON DELETE SET NULL,
+                    status VARCHAR(50) DEFAULT 'active'
                 );
                 CREATE TABLE IF NOT EXISTS role (
                     id SERIAL PRIMARY KEY,
