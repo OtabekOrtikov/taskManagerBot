@@ -3,7 +3,7 @@ from btns import back_to_settings
 from database.db_utils import get_db_pool, get_user, get_user_lang
 from menu.main_menu import navigate_to_main_menu
 from states import UserChanges
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from aiogram import types
 import re
 
@@ -21,20 +21,20 @@ async def edit_phone(callback: types.CallbackQuery, state: FSMContext):
 
     text = "Введите новый номер телефона:" if lang == 'ru' else "Yangi telefon raqamingizni kiriting:" if lang == 'uz' else "Enter your new phone number:"
 
-    keyboard = [
-        [back_to_settings[lang]]
-    ]
-    await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
     if lang == 'ru':
         keyboard = ReplyKeyboardMarkup(keyboard=[
             [KeyboardButton(text="Отправить номер телефона", request_contact=True)]
         ], resize_keyboard=True, one_time_keyboard=True)
-        send_message = await callback.message.answer("Введите правильный номер телефона в формате +998XXXXXXXXX или нажмите кнопку ниже", reply_markup=keyboard)
+        await callback.message.answer("Введите правильный номер телефона в формате +998XXXXXXXXX или нажмите кнопку ниже", reply_markup=keyboard)
     elif lang == 'uz':
         keyboard = ReplyKeyboardMarkup(keyboard=[
             [KeyboardButton(text="Telefon raqamni yuborish", request_contact=True)]
         ], resize_keyboard=True, one_time_keyboard=True)
-        send_message = await callback.message.answer("To'g'ri telefon raqamni +998XXXXXXXXX formatda kiriting yoki pastdagi tugmani bosing", reply_markup=keyboard)
+        await callback.message.answer("To'g'ri telefon raqamni +998XXXXXXXXX formatda kiriting yoki pastdagi tugmani bosing", reply_markup=keyboard)
+    keyboard = [
+        [back_to_settings[lang]]
+    ]
+    send_message = await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
     await state.update_data(main_menu_message_id=send_message.message_id)
     await state.set_state(UserChanges.phone_number)
 
@@ -54,7 +54,7 @@ async def changing_phone_number(message: types.Message, state: FSMContext):
 
         await state.clear()
         if lang == 'ru':
-            await message.answer("Телефон успешно сохранен.")
+            await message.answer("Телефон успешно сохранен.", reply_markup=ReplyKeyboardRemove())    
         elif lang == 'uz':
             await message.answer("Telefon muvaffaqiyatli saqlandi.")
         
