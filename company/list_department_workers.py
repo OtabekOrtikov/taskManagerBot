@@ -54,7 +54,8 @@ async def list_department_workers(callback: types.CallbackQuery, state: FSMConte
     # Worker buttons
     if total_workers > 0:
         for worker in current_workers:
-            keyboard.append([InlineKeyboardButton(text=f"{worker['fullname']}{" - Вы" if worker['user_id'] == user_id and user['lang'] == 'ru' else " - Bu siz"}", callback_data=f"show_worker_{worker['id']}")])
+            its_you_text = " - Вы" if worker['user_id'] == user_id and lang == 'ru' else " - Siz" if worker['user_id'] == user_id and lang == 'uz' else ""
+            keyboard.append([InlineKeyboardButton(text=f"{worker['fullname']}{its_you_text}", callback_data=f"show_worker_{worker['id']}")])
     else:
         if lang == 'ru':
             share_link = f"https://t.me/share/url?url={referal_link}&text=Ребята, нажмите, пожалуйста, на ссылку, чтобы получить задачу от начальства."
@@ -64,6 +65,10 @@ async def list_department_workers(callback: types.CallbackQuery, state: FSMConte
             share_link = f"https://t.me/share/url?url={referal_link}&text=Yigitlar, boshliqdan vazifa olish uchun quyidagi havolaga kiring."
             text = f"'{department['department_name']}' bo‘limida xodimlar yo‘q."
             keyboard.append([InlineKeyboardButton(text="Xodim qo‘shish", url=share_link)])
+        elif lang == 'en':
+            share_link = f"https://t.me/share/url?url={referal_link}&text=Guys, please click the link below to get a task from the management."
+            text = f"There are no workers in the '{department['department_name']}' department."
+            keyboard.append([InlineKeyboardButton(text="Add a worker", url=share_link)])
     # Pagination buttons
     if page > 1:
         keyboard.append([InlineKeyboardButton(text=back_page[user['lang']], callback_data=f"list_workers_{page - 1}")])

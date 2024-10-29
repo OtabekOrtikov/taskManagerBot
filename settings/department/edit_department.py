@@ -32,7 +32,7 @@ async def edit_department(callback: types.CallbackQuery, state: FSMContext):
         keyboard = [
             [InlineKeyboardButton(text="Change department name", callback_data=f"change_department_name_{department_id}")],
             [InlineKeyboardButton(text="Delete department", callback_data=f"delete_department_{department_id}")] if department['status'] == 'active' else [InlineKeyboardButton(text="Activate department", callback_data=f"activate_department_{department_id}")],
-            [InlineKeyboardButton(text="⬅️ Back", callback_data="edit_departments")]
+            [InlineKeyboardButton(text="🔙Back", callback_data="edit_departments")]
         ]
     elif lang == 'ru':
         text = (
@@ -43,7 +43,7 @@ async def edit_department(callback: types.CallbackQuery, state: FSMContext):
         keyboard = [
             [InlineKeyboardButton(text="Изменить название отдела", callback_data=f"change_department_name_{department_id}")],
             [InlineKeyboardButton(text="Удалить отдел", callback_data=f"delete_department_{department_id}")] if department['status'] == 'active' else [InlineKeyboardButton(text="Активировать отдел", callback_data=f"activate_department_{department_id}")],
-            [InlineKeyboardButton(text="⬅️ Назад", callback_data="edit_departments")]
+            [InlineKeyboardButton(text="🔙Назад", callback_data="edit_departments")]
         ]
     elif lang == 'uz':
         text = (
@@ -54,7 +54,7 @@ async def edit_department(callback: types.CallbackQuery, state: FSMContext):
         keyboard = [
             [InlineKeyboardButton(text="Bo'lim nomini o'zgartirish", callback_data=f"change_department_name_{department_id}")],
             [InlineKeyboardButton(text="Bo'limni o'chirish", callback_data=f"delete_department_{department_id}")] if department['status'] == 'active' else [InlineKeyboardButton(text="Bo'limni faollashtirish", callback_data=f"activate_department_{department_id}")],
-            [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="edit_departments")]
+            [InlineKeyboardButton(text="🔙Orqaga", callback_data="edit_departments")]
         ]
     
     await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard), parse_mode="Markdown")

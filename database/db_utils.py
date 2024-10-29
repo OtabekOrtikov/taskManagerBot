@@ -14,16 +14,19 @@ async def init_db():
                     id SERIAL PRIMARY KEY,
                     company_name VARCHAR(255) NOT NULL
                 );
+
                 CREATE TABLE IF NOT EXISTS department (
                     id SERIAL PRIMARY KEY,
                     department_name VARCHAR(255) NOT NULL,
                     company_id INT REFERENCES company(id) ON DELETE SET NULL,
                     status VARCHAR(50) DEFAULT 'active'
                 );
+
                 CREATE TABLE IF NOT EXISTS role (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(50) NOT NULL
                 );
+
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
                     user_id BIGINT UNIQUE NOT NULL,
@@ -37,17 +40,20 @@ async def init_db():
                     company_id INT REFERENCES company(id) ON DELETE SET NULL,
                     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
+
                 CREATE TABLE IF NOT EXISTS project (
                     id SERIAL PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    boss_id BIGINT REFERENCES users(user_id) ON DELETE SET NULL
+                    project_name VARCHAR(255) NOT NULL,
+                    boss_id BIGINT REFERENCES users(id) ON DELETE SET NULL
                 );
+
                 CREATE TABLE IF NOT EXISTS user_m2m_project (
-                    user_id BIGINT REFERENCES users(user_id) ON DELETE CASCADE,
+                    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
                     project_id BIGINT REFERENCES project(id) ON DELETE CASCADE,
                     role VARCHAR(50),
                     PRIMARY KEY (user_id, project_id)
                 );
+
                 CREATE TABLE IF NOT EXISTS task (
                     id SERIAL PRIMARY KEY,
                     task_title VARCHAR(30) NOT NULL,
@@ -55,8 +61,8 @@ async def init_db():
                     start_date DATE,
                     due_date DATE,
                     status VARCHAR(50),
-                    task_owner_id BIGINT REFERENCES users(user_id) ON DELETE SET NULL,
-                    task_assignee_id BIGINT REFERENCES users(user_id) ON DELETE SET NULL,
+                    task_owner_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                    task_assignee_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     started_at TIMESTAMP,
                     paused_at TIMESTAMP,
@@ -65,6 +71,7 @@ async def init_db():
                     project_id INT REFERENCES project(id) ON DELETE SET NULL
                 );
             """)
+
 
 def get_db_pool():
     """Returns the database pool if initialized."""
@@ -86,3 +93,11 @@ async def get_user_lang(telegram_id):
     """Fetches a user's language from the database by telegram ID."""
     async with db_pool.acquire() as connection:
         return await connection.fetchval("SELECT lang FROM users WHERE user_id = $1", telegram_id)
+    
+async def add_user_with_role(connection, telegram_id, username, role_id, company_id, department_id):
+    """Adds a user to the database with a specified role."""
+    await connection.execute("INSERT INTO users (user_id, username, role_id, company_id, department_id) VALUES ($1, $2, $3, $4, $5)", telegram_id, username, role_id, company_id, department_id)
+
+async def get_department_manager(connection, company_id, department_id):
+    """Checks if a Manager exists for the specified department."""
+    return await connection.fetchval("SELECT id FROM users WHERE company_id = $1 AND department_id = $2 AND role_id = 2", company_id, department_id)

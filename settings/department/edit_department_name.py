@@ -28,17 +28,17 @@ async def edit_department_name(callback: types.CallbackQuery, state: FSMContext)
     if lang == 'en':
         text = f"Enter the new name for the department **{department['department_name']}**:"
         keyboard = [
-            [InlineKeyboardButton(text="⬅️ Back", callback_data=f"edit_department_{department_id}")]
+            [InlineKeyboardButton(text="🔙Back", callback_data=f"edit_department_{department_id}")]
         ]
     elif lang == 'ru':
         text = f"Введите новое название для отдела **{department['department_name']}**:"
         keyboard = [
-            [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"edit_department_{department_id}")]
+            [InlineKeyboardButton(text="🔙Назад", callback_data=f"edit_department_{department_id}")]
         ]
     elif lang == 'uz':
         text = f"**{department['department_name']}** bo'limi uchun yangi nomni kiriting:"
         keyboard = [
-            [InlineKeyboardButton(text="⬅️ Orqaga", callback_data=f"edit_department_{department_id}")]
+            [InlineKeyboardButton(text="🔙Orqaga", callback_data=f"edit_department_{department_id}")]
         ]
 
     await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard), parse_mode="Markdown")

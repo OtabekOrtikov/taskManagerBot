@@ -1,18 +1,14 @@
 from aiogram import types, Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
-from database.db_utils import get_db_pool, get_user
+from database.db_utils import get_db_pool, get_user, add_user_with_role, get_department_manager
 from menu.main_menu import navigate_to_main_menu
 
-router = Router()
-
-@router.message(F.text.startswith('/start'))
 async def start_command(message: types.Message, state: FSMContext):
     db_pool = get_db_pool()
     user_id = message.from_user.id
 
-    # Check if user exists; if not, add them with role_id=1 (Boss)
+    # Check if user exists
     user = await get_user(user_id)
     args = message.text.split(" ", 1)
     company_id = None
@@ -20,16 +16,20 @@ async def start_command(message: types.Message, state: FSMContext):
 
     await state.update_data(main_menu_message_id=0)
 
-    # If there are any arguments after /start, parse them
-    if len(args) > 1 and args[1]:
-        try:
-            # Assuming that the format is "1_group=1", split it
-            params = args[1].split('_')
-            company_id = params[0]
-            if len(params) > 1:
-                department_id = params[1].split('=')[1]  # Extract department_id from "group=1"
+    print("Start command received.")  # Debug info
 
-            print(f"Parsed company_id: {company_id}, department_id: {department_id}, user_id: {user_id}")  # Debugging info
+    # Parse referral link parameters if they exist
+    if len(args) > 1 and args[1]:
+        print(f"Referral link detected: {args[1]}")  # Debug info
+        try:
+            # Split the parameters and validate the format
+            params = args[1].split('_')
+            if len(params) == 2 and params[1].startswith("department="):
+                company_id = int(params[0])
+                department_id = int(params[1].split('=')[1])
+                print(f"Parsed company_id: {company_id}, department_id: {department_id}, user_id: {user_id}")  # Debug info
+            else:
+                raise ValueError("Invalid referral format.")
         except Exception as e:
             print(f"Error parsing arguments: {e}")
             await message.reply("Ошибка в параметрах ссылки. Пожалуйста, проверьте правильность ссылки.")
@@ -48,11 +48,27 @@ Salom! Men sizga loyihalarni boshqarishda yordam beraman. Boshlash uchun tilni t
         ]
     ])
     
-    # Correct usage of db_pool.acquire with parentheses
     async with db_pool.acquire() as connection:
         if user is None:
-            await connection.execute("INSERT INTO users (user_id, username, role_id) VALUES ($1, $2, 1) ON CONFLICT (user_id) DO NOTHING", user_id, message.from_user.username)
+            print("User not found in DB. Adding user...")  # Debug info
+            # Determine the role based on referral link information
+            if company_id and department_id:
+                # Check if there is already a Manager for this department
+                manager_exists = await get_department_manager(connection, company_id, department_id)
+                
+                # Assign Manager if no manager exists, else assign Worker
+                role_id = 2 if not manager_exists else 3
+            else:
+                # Assign Boss role if no referral link is used
+                role_id = 1
+
+            # Add the user to the database with the determined role
+            await add_user_with_role(connection, user_id, message.from_user.username, role_id, company_id, department_id)
+            
+            # Send welcome message
             send_message = await message.answer(text, reply_markup=keyboard)
             await state.update_data(main_menu_message_id=send_message.message_id)
         else:
+            print("User found in DB.")
+            # Navigate to the main menu if user already exists
             await navigate_to_main_menu(user_id, message.chat.id, state)

@@ -10,6 +10,7 @@ async def list_workers(callback: types.CallbackQuery, state: FSMContext):
     db_pool = get_db_pool()
     user_id = callback.from_user.id
     user = await get_user(user_id)
+    lang = user['lang']
 
     message_data = await state.get_data()
     last_button_message_id = message_data.get("main_menu_message_id")
@@ -43,12 +44,27 @@ async def list_workers(callback: types.CallbackQuery, state: FSMContext):
     current_workers = workers[start:end]
 
     # Build message text and keyboard
-    text = f"Список сотрудников компании ‘**{company['company_name']}**’:" if user['lang'] == 'ru' else f"‘**{company['company_name']}**’ kompaniyasining xodimlari ro‘yxati:"
+    if lang == 'en':
+        text = f"Workers of {company['company_name']}:\nTotal count: {total_workers}\n\nIf you want to change a role or see list worker tasks click on the worker name."
+    elif lang == 'ru':
+        text = f"Сотрудники {company['company_name']}:\nВсего: {total_workers} сотрудников\n\nЕсли хотите изменить роль или посмотреть задачи сотрудника, нажмите на его имя."
+    elif lang == 'uz':
+        text = f"{company['company_name']} xodimlari:\nJami: {total_workers} xodim\n\nAgar siz xodimning rolini o'zgartirish yoki vazifalar ro'yxatini ko'rishni xohlaysiz, xodimning ismiga bosing."
+
     keyboard = []
 
-    # Worker buttons
     for worker in current_workers:
-        keyboard.append([InlineKeyboardButton(text=f"{worker['fullname']}{" - Вы" if worker['user_id'] == user_id and user['lang'] == 'ru' else " - Bu siz"}", callback_data=f"show_worker_{worker['id']}")])
+        if worker['user_id'] == user_id:
+            if lang == 'ru':
+                keyboard.append([InlineKeyboardButton(text=f"{worker['fullname']} - Вы", callback_data=f"settings")])
+            elif lang == 'uz':
+                keyboard.append([InlineKeyboardButton(text=f"{worker['fullname']} - Siz", callback_data=f"settings")])
+            elif lang == 'en':
+                keyboard.append([InlineKeyboardButton(text=f"{worker['fullname']} - You", callback_data=f"settings")])
+        else:
+            keyboard.append([InlineKeyboardButton(text=worker['fullname'], callback_data=f"show_worker_{worker['id']}")])
+        
+
 
     # Pagination buttons
     if page > 1:

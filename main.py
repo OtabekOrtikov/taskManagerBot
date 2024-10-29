@@ -7,6 +7,7 @@ import asyncio
 from commands.back_main import back_to_main_menu
 from commands.deletedb import delete_db
 from commands.start import start_command
+from company.show_worker import show_worker
 from database.db_utils import *
 
 from config import API_TOKEN
@@ -20,6 +21,7 @@ from company.referal_links import show_referal_links
 from department.continue_creation import continue_department_creation
 from department.department_creation import process_department_name
 from department.finish_creation import finish_department_creation
+from projects import creation_project
 from projects.creation_project import create_project
 from registration.birthdate import process_birthdate
 from registration.fullname import process_fullname
@@ -72,10 +74,13 @@ router.callback_query.register(delete_department.delete_department, F.data.start
 router.callback_query.register(delete_department.confirm_delete_department, F.data.startswith("confirm_delete_department_"))
 router.callback_query.register(activate_department.activate_department, F.data.startswith("activate_department_"))
 router.callback_query.register(activate_department.confirm_activate_department, F.data.startswith("confirm_activate_department_"))
+router.callback_query.register(show_worker, F.data.startswith("show_worker_"))
 
 router.callback_query.register(create_task, F.data == "create_task")
 
 router.callback_query.register(create_project, F.data == "create_project")
+
+router.message(F.text.startswith("/start"))(start_command)
 
 # state messages
 router.message(StateFilter(RegistrationStates.fullname))(process_fullname)
@@ -89,10 +94,9 @@ router.message(StateFilter(UserChanges.birthdate))(changing_birthdate)
 router.message(StateFilter(CompanyChanges.company_name))(edit_company_name.changing_company_name)
 router.message(StateFilter(DepartmentChanges.department_name))(edit_department_name.changing_department_name)
 
-router.message(StateFilter(ProjectCreation.project_name))(create_project.creating_project)
+router.message(StateFilter(ProjectCreation.project_name))(creation_project.creating_project)
 
 # commands
-router.message(F.text == "/start")(start_command)
 router.message(F.text == "/deletedb")(delete_db)
 
 async def notify_users_about_restart():

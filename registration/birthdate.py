@@ -1,6 +1,7 @@
 import datetime
 from aiogram.fsm.context import FSMContext
 from database.db_utils import get_db_pool, get_user, get_user_lang
+from menu.main_menu import navigate_to_main_menu
 from states import CompanyCreation
 from aiogram import types
 
@@ -37,11 +38,6 @@ async def process_birthdate(message: types.Message, state: FSMContext):
             """, date_obj.date(), message.from_user.id)
             user_role = await connection.fetchval("SELECT role_id FROM users WHERE user_id = $1", user_id)
 
-        if lang == 'ru':
-            await message.answer("Дата рождения успешно сохранена.")
-        elif lang == 'uz':
-            await message.answer("Tug'ilgan kun muvaffaqiyatli saqlandi.")
-
         # Proceed to the next state
         if user_role == 1 and user['company_id'] is None:
             await state.set_state(CompanyCreation.company_name)
@@ -55,6 +51,7 @@ async def process_birthdate(message: types.Message, state: FSMContext):
                 await message.answer("Вы успешно завершили регистрацию")
             elif lang == 'uz':
                 await message.answer("Siz muvaffaqiyatli ro'yxatdan o'tdingiz")
+            await navigate_to_main_menu(user_id, message.chat.id, state)
     except ValueError:
         if lang == 'ru':
             await message.answer("Неверный формат даты. Пожалуйста, введите дату в формате ДД.ММ.ГГГГ")

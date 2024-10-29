@@ -28,3 +28,13 @@ class CompanyChanges(StatesGroup):
 class DepartmentChanges(StatesGroup):
     department_id = State()
     department_name = State()
+
+class TaskCreation(StatesGroup):
+    project_id = State()
+    task_title = State()
+    task_description = State()
+    start_date = State()
+    due_date = State()
+    task_owner_id = State()
+    task_assignee_id = State()
+    priority = State()

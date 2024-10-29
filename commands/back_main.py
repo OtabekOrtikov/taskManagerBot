@@ -11,5 +11,6 @@ async def back_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer("This button is no longer active.")
         return
     """Handles navigating back to the main menu, using role-based logic."""
-    await callback.message.delete()  # Optionally delete the previous message
+    await callback.message.delete()
+    await state.clear()
     await navigate_to_main_menu(callback.from_user.id, callback.message.chat.id, state)  # Go to main menu
