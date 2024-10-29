@@ -27,13 +27,13 @@ async def show_referal_links(callback: types.CallbackQuery, state: FSMContext):
 
     if lang == 'ru':
         for department in departments:
-            referal_link = f"https://t.me/{BOT_USERNAME}?start={company['id']}_group={department['id']}"
+            referal_link = f"https://t.me/{BOT_USERNAME}?start={company['id']}_department={department['id']}"
             share_link = f"https://t.me/share/url?url={referal_link}&text=Парни, заходите по ссылке ниже, чтобы получить задание от начальника."
             keyboard.append([InlineKeyboardButton(text=f"Отдел: {department['department_name']}", url=share_link)])
 
     elif lang == 'uz':
         for department in departments:
-            referal_link = f"https://t.me/{BOT_USERNAME}?start={company['id']}_group={department['id']}"
+            referal_link = f"https://t.me/{BOT_USERNAME}?start={company['id']}_department={department['id']}"
             share_link = f"https://t.me/share/url?url={referal_link}&text=Yigitlar, boshliqdan vazifa olish uchun quyidagi havolaga kiring."
             keyboard.append([InlineKeyboardButton(text=f"Bo'lim: {department['department_name']}", url=share_link)])
     
