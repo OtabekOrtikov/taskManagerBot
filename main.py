@@ -4,6 +4,10 @@ from aiogram.filters import StateFilter
 from aiogram.types import ReplyKeyboardRemove
 import asyncio
 
+from company.project.company_projects import show_company_projects
+from company.project.project_info import show_project_info
+from company.project.project_task import show_project_tasks
+from company.project.project_workers import show_project_workers
 from company.show_company_tasks import show_company_tasks
 from tasks.creation.assignee_phone import process_assignee_phone
 from tasks.creation.list_workers import process_list_workers
@@ -107,6 +111,10 @@ router.callback_query.register(confirming_task, F.data == "task_confirm")
 router.callback_query.register(task_info, F.data.startswith("task_info_"))
 
 router.callback_query.register(create_project, F.data == "create_project")
+router.callback_query.register(show_company_projects, F.data.startswith("show_company_projects"))
+router.callback_query.register(show_project_info, F.data.startswith("project_info_"))
+router.callback_query.register(show_project_tasks, F.data.startswith("show_project_tasks_"))
+router.callback_query.register(show_project_workers, F.data.startswith("show_project_workers_"))
 
 router.message(F.text.startswith("/start"))(start_command)
 
