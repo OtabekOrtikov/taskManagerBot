@@ -33,5 +33,5 @@ async def process_task_title(message: types.Message, state: FSMContext):
         send_text = "Ajoyib, endi vazifa tavsifini kiriting."
 
     await message.answer(send_text, reply_markup=keyboard)
-    await state.update_data(main_menu_message_id=message.message_id)
+    await state.update_data(main_menu_message_id=message.message_id+1)
     await state.set_state(TaskCreation.task_description)

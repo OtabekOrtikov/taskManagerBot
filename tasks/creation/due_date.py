@@ -1,63 +1,41 @@
+from datetime import datetime
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 from config import PAGE_SIZE
 from database.db_utils import get_db_pool, get_user
 from btns import back_to_main, next_page
 from states import TaskCreation
-from datetime import datetime
-from utils.parse_date import parse_date
+
+from utils.date_function import parse_and_validate_date
 
 async def process_due_date(message: types.Message, state: FSMContext):
-    due_date_text = message.text
+    due_date_str = message.text
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user['lang']
 
-    # Retrieve and parse start_date from state
     data = await state.get_data()
-    start_date_text = data.get("start_date")
-    if not start_date_text:
-        await message.answer("Start date is not set. Please set the start date before setting the due date.")
-        return
-
     try:
-        start_date = parse_date(start_date_text)
+        # Process start and due dates
+        start_date = parse_and_validate_date(data.get("start_date"))
+        due_date = parse_and_validate_date(due_date_str, reference_date=datetime.strptime(start_date, "%d.%m.%Y"))
     except ValueError as e:
-        await message.answer(f"Invalid start date. Please enter a valid start date before setting the due date. {e}")
-        return
-
-    # Parse and validate the due date
-    try:
-        due_date = parse_date(due_date_text)
-    except ValueError:
-        # Error message based on language if due date format is invalid
-        error_text = {
-            'en': "Invalid date format or date out of range. Please enter a due date in one of the following formats: **dd.mm** or **dd.mm.yy**.",
-            'ru': "Неверный формат даты или дата вне диапазона. Пожалуйста, введите дату окончания в одном из следующих форматов: **дд.мм** или **дд.мм.гг**.",
-            'uz': "Noto‘g‘ri sana formati yoki sana belgilangan chegaradan tashqarida. Iltimos, tugash sanasini quyidagi formatlarda kiriting: **kk.oo** yoki **kk.oo.yy**."
+        # Send error message to user based on language
+        error_messages = {
+            'en': str(e),
+            'ru': f"Неверный формат или дата вне диапазона. {e}",
+            'uz': "Xato format yoki sana chegaradan tashqarida."
         }
-        await message.answer(error_text[lang], parse_mode="Markdown")
-        return
-
-    # Ensure that due date is after start date
-    if due_date <= start_date:
-        error_text = {
-            'en': "The due date must be after the start date. Please enter a valid due date.",
-            'ru': "Дата окончания должна быть после даты начала. Пожалуйста, введите корректную дату окончания.",
-            'uz': "Tugash sanasi boshlanish sanasidan keyin bo'lishi kerak. Iltimos, tugash sanasini to‘g‘ri kiriting."
-        }
-        await message.answer(error_text[lang], parse_mode="Markdown")
+        await message.answer(error_messages[lang], parse_mode="Markdown")
         return
     
-    # Update state with valid due date
-    await state.update_data(due_date=parse_date(due_date_text))
+    await state.update_data(due_date=due_date)
 
-    # Prepare message for worker selection
     keyboard = []
     send_text = {
-        'en': "Well, now, please select the worker who should complete this task.\n\nP.s. You can enter the worker's phone number in the format \"+998aabbbccdd\" to find it.",
-        'ru': "Что ж, теперь, пожалуйста, выберите сотрудника, который должен выполнить это задание.\n\nP.s. Вы можете ввести номер телефона сотрудника в формате \"+998aabbbccdd\", чтобы найти его.",
-        'uz': "Xo'sh, endi, iltimos, ushbu vazifani bajarishi kerak bo'lgan xodimni tanlang.\n\nP.s. Siz uni qidirish uchun xodimning telefon raqamini \"+998aabbccdd\" formatida yozishingiz mumkin."
+        'en': f"So, you have set the task completion date from {start_date} to {due_date} now, please select the worker who should complete this task.\n\nP.s. You can enter the worker's phone number in the format \"+998aabbbccdd\" to find it.",
+        'ru': f"Итак, вы установили дату завершения задачи с {start_date} на {due_date}, теперь выберите сотрудника, который должен выполнить эту задачу.\n\nP.s. Вы можете ввести номер телефона сотрудника в формате \"+998aabbbccdd\", чтобы найти его.",
+        'uz': f"Demak, siz vazifani yakunlash sanasini {start_date} dan {due_date} ga sozladingiz, endi ushbu vazifani bajarishi kerak bo'lgan xodimni tanlang.\n\nP.s. Siz uning telefon raqamini \"+998aabbbccdd\" formatda kiritsangiz, uni topishingiz mumkin."
     }
 
     db = get_db_pool()

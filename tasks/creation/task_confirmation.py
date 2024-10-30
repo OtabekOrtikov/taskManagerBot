@@ -5,8 +5,6 @@ from database.db_utils import get_user, get_db_pool, create_task
 from menu.main_menu import navigate_to_main_menu
 from datetime import datetime
 
-from utils.parse_date import parse_date
-
 bot = Bot(token=API_TOKEN)
 
 async def confirming_task(callback: types.CallbackQuery, state: FSMContext):
