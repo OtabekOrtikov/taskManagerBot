@@ -47,21 +47,21 @@ async def create_task(callback: types.CallbackQuery, state: FSMContext):
         await state.update_data(main_menu_message_id=send_message.message_id)
     else:
         if lang == "ru":
-            send_message = await callback.message.edit_text("У вас нет проектов. Поэтому вы создаете задачу для сотрудника вашей компании.\nВведите название задачи.", 
+            send_message = await callback.message.edit_text("У вас нет проектов. Поэтому вы создаете задачу для сотрудника вашей компании.\nВведите название задачи. Максимум 30 символов.", 
                                                             reply_markup=InlineKeyboardMarkup(
                                                                 inline_keyboard=[
                                                                     [back_to_main[lang]]
                                                                 ]
                                                             ))
         elif lang == "uz":
-            send_message = await callback.message.edit_text("Sizda loyihalar yo'q. Shuning uchun siz kompaniyangizning xodimi uchun vazifa yaratasiz.\nVazifa nomini kiriting.", 
+            send_message = await callback.message.edit_text("Sizda loyihalar yo'q. Shuning uchun siz kompaniyangizning xodimi uchun vazifa yaratasiz.\nVazifa nomini kiriting. Maksimum 30 belgi.", 
                                                             reply_markup=InlineKeyboardMarkup(
                                                                 inline_keyboard=[
                                                                     [back_to_main[lang]]
                                                                 ]
                                                             ))
         elif lang == 'en':
-            send_message = await callback.message.edit_text("You don't have any projects. Therefore, you are creating a task for an employee of your company.\nEnter the task name.", 
+            send_message = await callback.message.edit_text("You don't have any projects. Therefore, you are creating a task for an employee of your company.\nEnter the task name. Maximum 30 characters.", 
                                                             reply_markup=InlineKeyboardMarkup(
                                                                 inline_keyboard=[
                                                                     [back_to_main[lang]]

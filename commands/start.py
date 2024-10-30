@@ -8,6 +8,8 @@ async def start_command(message: types.Message, state: FSMContext):
     db_pool = get_db_pool()
     user_id = message.from_user.id
 
+    state.clear()
+
     # Check if user exists
     user = await get_user(user_id)
     args = message.text.split(" ", 1)

@@ -4,10 +4,14 @@ from aiogram.filters import StateFilter
 from aiogram.types import ReplyKeyboardRemove
 import asyncio
 
-from commands.back_main import back_to_main_menu
+from tasks.creation.list_workers import process_list_workers
+from tasks.creation.priority import progress_task_priority
+from tasks.creation.task_confirmation import confirming_task
+from utils.back_main import back_to_main_menu
 from commands.deletedb import delete_db
 from commands.start import start_command
-from company.show_worker import show_worker
+from tasks.creation.set_today_date import set_today_date
+from worker.show_worker import show_worker
 from database.db_utils import *
 
 from config import API_TOKEN
@@ -28,6 +32,7 @@ from registration.fullname import process_fullname
 from registration.lang import set_lang
 from registration.phoneNumber import process_phone_number
 
+# Settings
 from settings.company_info import edit_company_name
 from settings.company_info.edit_company import edit_company_info
 from settings.department import activate_department, delete_department, edit_department_name
@@ -39,9 +44,19 @@ from settings.user_info.change_fullname import changing_fullname, edit_fullname
 from settings.user_info.change_lang import changing_lang, edit_lang
 from settings.user_info.change_phone import changing_phone_number, edit_phone
 from settings.user_info.edit_user import edit_user
-from states import *
-from tasks.creation_task import create_task
 
+# Task creation
+from tasks.creation.creation_task import create_task
+from tasks.creation.create_project_task import create_project_task
+from tasks.creation.skip_project_task import skip_creation_ptask
+from tasks.creation.task_title import process_task_title
+from tasks.creation.task_description import process_task_description
+from tasks.creation.start_date import process_start_date
+from tasks.creation.due_date import process_due_date
+from tasks.creation.task_worker import process_task_worker
+
+# States
+from states import *
 # Initialize bot and storage
 bot = Bot(token=API_TOKEN)
 storage = MemoryStorage()
@@ -77,6 +92,13 @@ router.callback_query.register(activate_department.confirm_activate_department, 
 router.callback_query.register(show_worker, F.data.startswith("show_worker_"))
 
 router.callback_query.register(create_task, F.data == "create_task")
+router.callback_query.register(create_project_task, F.data.startswith("create_project_task_"))
+router.callback_query.register(skip_creation_ptask, F.data == "skip_project_task_creation")
+router.callback_query.register(set_today_date, F.data == "set_today")
+router.callback_query.register(process_task_worker, F.data.startswith("task_worker_"))
+router.callback_query.register(process_list_workers, F.data.startswith("task_workers_page_"))
+router.callback_query.register(progress_task_priority, F.data.startswith("task_priority_"))
+router.callback_query.register(confirming_task, F.data == "task_confirm")
 
 router.callback_query.register(create_project, F.data == "create_project")
 
@@ -94,7 +116,14 @@ router.message(StateFilter(UserChanges.birthdate))(changing_birthdate)
 router.message(StateFilter(CompanyChanges.company_name))(edit_company_name.changing_company_name)
 router.message(StateFilter(DepartmentChanges.department_name))(edit_department_name.changing_department_name)
 
+# project creation
 router.message(StateFilter(ProjectCreation.project_name))(creation_project.creating_project)
+
+# task creation
+router.message(StateFilter(TaskCreation.task_title))(process_task_title)
+router.message(StateFilter(TaskCreation.task_description))(process_task_description)
+router.message(StateFilter(TaskCreation.start_date))(process_start_date)
+router.message(StateFilter(TaskCreation.due_date))(process_due_date)
 
 # commands
 router.message(F.text == "/deletedb")(delete_db)

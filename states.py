@@ -35,6 +35,7 @@ class TaskCreation(StatesGroup):
     task_description = State()
     start_date = State()
     due_date = State()
-    task_owner_id = State()
+    task_assignee_phone = State()
     task_assignee_id = State()
     priority = State()
+    task_confirm = State()

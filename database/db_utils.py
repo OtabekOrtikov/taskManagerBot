@@ -63,6 +63,7 @@ async def init_db():
                     status VARCHAR(50),
                     task_owner_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
                     task_assignee_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                    priority VARCHAR(50) NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     started_at TIMESTAMP,
                     paused_at TIMESTAMP,
@@ -101,3 +102,56 @@ async def add_user_with_role(connection, telegram_id, username, role_id, company
 async def get_department_manager(connection, company_id, department_id):
     """Checks if a Manager exists for the specified department."""
     return await connection.fetchval("SELECT id FROM users WHERE company_id = $1 AND department_id = $2 AND role_id = 2", company_id, department_id)
+
+async def create_task(connection, task_title, task_description, start_date, due_date, task_owner_id, task_assignee_id, priority, project_id, created_at):
+    """Creates a task in the database."""
+    if project_id:
+        await connection.execute("""
+            INSERT INTO task (
+                task_title, 
+                task_description, 
+                start_date, 
+                due_date, 
+                status, 
+                task_owner_id, 
+                task_assignee_id, 
+                priority, 
+                project_id,
+                created_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            """, 
+            task_title,
+            task_description,
+            start_date,
+            due_date,
+            'Not started',
+            task_owner_id,
+            task_assignee_id,
+            priority,
+            project_id,
+            created_at)
+    else:
+        await connection.execute("""
+            INSERT INTO task (
+                task_title, 
+                task_description, 
+                start_date, 
+                due_date, 
+                status, 
+                task_owner_id, 
+                task_assignee_id, 
+                priority,
+                created_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            """, 
+            task_title,
+            task_description,
+            start_date,
+            due_date,
+            'Not started',
+            task_owner_id,
+            task_assignee_id,
+            priority,
+            created_at)
