@@ -40,12 +40,17 @@ async def process_due_date(message: types.Message, state: FSMContext):
 
     db = get_db_pool()
 
+    project_id = data.get("project_id") if data.get("project_id") else None
+
     async with db.acquire() as connection:
         # Fetch workers based on user role and company affiliation
-        if user['role_id'] == 1:
-            workers = await connection.fetch("SELECT * FROM users WHERE role_id != 1 AND company_id = $1", user['company_id'])
+        if project_id != None:
+            if user['role_id'] == 1:
+                workers = await connection.fetch("SELECT * FROM users WHERE role_id != 1 AND company_id = $1", user['company_id'])
+            else:
+                workers = await connection.fetch("SELECT * FROM users WHERE role_id != 1 AND company_id = $1 AND department_id = $2", user['company_id'], user['department_id'])
         else:
-            workers = await connection.fetch("SELECT * FROM users WHERE role_id != 1 AND company_id = $1 AND department_id = $2", user['company_id'], user['department_id'])
+            workers = await connection.fetch("SELECT * FROM users WHERE role_id != 1")
 
     total_workers = len(workers)
 

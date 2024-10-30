@@ -155,3 +155,12 @@ async def create_task(connection, task_title, task_description, start_date, due_
             task_assignee_id,
             priority,
             created_at)
+        
+async def get_task_with(connection, task_id):
+    """Fetches a task with the project name."""
+    return await connection.fetchrow("""
+        SELECT t.*, p.project_name
+        FROM task t
+        LEFT JOIN project p ON t.project_id = p.id
+        WHERE t.id = $1
+    """, task_id)

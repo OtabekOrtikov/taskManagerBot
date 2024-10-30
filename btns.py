@@ -50,18 +50,21 @@ company_menu_btns = {
         [InlineKeyboardButton(text="Список отделов", callback_data="departments")],
         [InlineKeyboardButton(text="Список сотрудников", callback_data="list_workers")],
         [InlineKeyboardButton(text="Список задач", callback_data="show_company_tasks")],
+        [InlineKeyboardButton(text="Список проектов", callback_data="show_company_projects")],
         [back_to_main["ru"]]
     ]),
     "uz": InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Bo'limlar ro'yxati", callback_data="departments")],
         [InlineKeyboardButton(text="Xodimlar ro'yxati", callback_data="list_workers")],
         [InlineKeyboardButton(text="Vazifalar ro'yxati", callback_data="show_company_tasks")],
+        [InlineKeyboardButton(text="Loyihalar ro'yxati", callback_data="show_company_projects")],
         [back_to_main["uz"]]
     ]),
     "en": InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Departments list", callback_data="departments")],
         [InlineKeyboardButton(text="Workers list", callback_data="list_workers")],
-        [InlineKeyboardButton(text="Tasks list", callback_data="show_company_tasks")],
+        [InlineKeyboardButton(text="Tasks list", callback_data="show_company_tasks")],\
+        [InlineKeyboardButton(text="Projects list", callback_data="show_company_projects")],
         [back_to_main["en"]]
     ])
 }

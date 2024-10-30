@@ -4,10 +4,12 @@ from aiogram.filters import StateFilter
 from aiogram.types import ReplyKeyboardRemove
 import asyncio
 
+from company.show_company_tasks import show_company_tasks
 from tasks.creation.assignee_phone import process_assignee_phone
 from tasks.creation.list_workers import process_list_workers
 from tasks.creation.priority import progress_task_priority
 from tasks.creation.task_confirmation import confirming_task
+from tasks.task_info import task_info
 from utils.back_main import back_to_main_menu
 from commands.deletedb import delete_db
 from commands.start import start_command
@@ -91,6 +93,7 @@ router.callback_query.register(delete_department.confirm_delete_department, F.da
 router.callback_query.register(activate_department.activate_department, F.data.startswith("activate_department_"))
 router.callback_query.register(activate_department.confirm_activate_department, F.data.startswith("confirm_activate_department_"))
 router.callback_query.register(show_worker, F.data.startswith("show_worker_"))
+router.callback_query.register(show_company_tasks, F.data.startswith("show_company_tasks"))
 
 router.callback_query.register(create_task, F.data == "create_task")
 router.callback_query.register(create_project_task, F.data.startswith("create_project_task_"))
@@ -100,6 +103,8 @@ router.callback_query.register(process_task_worker, F.data.startswith("task_work
 router.callback_query.register(process_list_workers, F.data.startswith("task_workers_page_"))
 router.callback_query.register(progress_task_priority, F.data.startswith("task_priority_"))
 router.callback_query.register(confirming_task, F.data == "task_confirm")
+
+router.callback_query.register(task_info, F.data.startswith("task_info_"))
 
 router.callback_query.register(create_project, F.data == "create_project")
 
