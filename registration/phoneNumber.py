@@ -14,6 +14,10 @@ async def process_phone_number(message: types.Message, state: FSMContext):
 
     # Check if the phone number matches the expected format
     if re.match(r'^998\d{9}$', normalized_phone_number):
+        if phone_number.startswith('+'):
+            phone_number = phone_number
+        else:
+            phone_number = f'+{phone_number}'
         async with db_pool.acquire() as connection:
             await connection.execute("UPDATE users SET phone_number = $1 WHERE user_id = $2", phone_number, message.from_user.id)
 

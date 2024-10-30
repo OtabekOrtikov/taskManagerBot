@@ -15,7 +15,16 @@ async def process_start_date(message: types.Message, state: FSMContext):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[back_to_main[lang]]])
 
 
-    start_date = parse_and_validate_date(start_date_str)
+    try:
+        start_date = parse_and_validate_date(start_date_str)
+    except ValueError as e:
+        if lang == 'en':
+            await message.answer("Invalid date format. Please enter the start date in the format: **dd.mm** or **dd.mm.yy**", parse_mode="Markdown", reply_markup=keyboard)
+        elif lang == 'ru':
+            await message.answer("Неверный формат даты. Пожалуйста, введите дату начала в формате: **дд.мм** или **дд.мм.гг**", parse_mode="Markdown", reply_markup=keyboard)
+        elif lang == 'uz':
+            await message.answer("Noto'g'ri sana formati. Iltimos, boshlash sanasini quyidagi formatda kiriting: **kk.oy** yoki **kk.oy.yy**", parse_mode="Markdown", reply_markup=keyboard)
+        return
     
     await state.update_data(start_date=start_date)
 

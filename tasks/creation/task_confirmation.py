@@ -39,6 +39,25 @@ async def confirming_task(callback: types.CallbackQuery, state: FSMContext):
 
     async with db.acquire() as connection:
         worker = await connection.fetchrow("SELECT * FROM users WHERE id = $1", task_assignee_id)
+        if project_id:
+            project = await connection.fetchrow("SELECT * FROM project WHERE id = $1", project_id)
+
+    send_text = {
+        'en': f"Task created successfully for {worker['fullname']} in the project {project['project_name']}." if project_id else f"Task created successfully for {worker['fullname']}.",
+        'ru': f"Задача успешно создана для {worker['fullname']} в проекте {project['project_name']}." if project_id else f"Задача успешно создана для {worker['fullname']}.",
+        'uz': f"Vazifa muvaffaqiyatli yaratildi {worker['fullname']} uchun {project['project_name']} proyektida." if project_id else f"Vazifa muvaffaqiyatli yaratildi {worker['fullname']} uchun."
+    }
+
+    notify_worker_text = {
+        'en_company': f"You have a new task:\n\nTitle: {task_title}\nDescription: {task_description}\nStart date: {start_date}\nDue date: {due_date}\nPriority: {priority}\nCreated at: {created_at}\nCreated by: {user['fullname']}\n\nPlease check your tasks list.",
+        'ru_company': f"У вас новая задача:\n\nНазвание: {task_title}\nОписание: {task_description}\nДата начала: {start_date}\nДата окончания: {due_date}\nПриоритет: {priority}\nСоздано: {created_at}\nСоздано: {user['fullname']}\n\nПожалуйста, проверьте свой список задач.",
+        'uz_company': f"Sizga yangi vazifa berildi:\n\nSarlavha: {task_title}\nTavsif: {task_description}\nBoshlanish sanasi: {start_date}\nTugash sanasi: {due_date}\nUrg'atish: {priority}\nYaratilgan: {created_at}\nYaratuvchi: {user['fullname']}\n\nIltimos, vazifalar ro'yxatingizni tekshiring.",
+
+        'en_project': f"You have a new task in the project {project['project_name']}:\n\nTitle: {task_title}\nDescription: {task_description}\nStart date: {start_date}\nDue date: {due_date}\nPriority: {priority}\nCreated at: {created_at}\nCreated by: {user['fullname']}\n\nPlease check your tasks list.",
+        'ru_project': f"У вас новая задача в проекте {project['project_name']}:\n\nНазвание: {task_title}\nОписание: {task_description}\nДата начала: {start_date}\nДата окончания: {due_date}\nПриоритет: {priority}\nСоздано: {created_at}\nСоздано: {user['fullname']}\n\nПожалуйста, проверьте свой список задач.",
+        'uz_project': f"Sizga {project['project_name']} proyektida yangi vazifa berildi:\n\nSarlavha: {task_title}\nTavsif: {task_description}\nBoshlanish sanasi: {start_date}\nTugash sanasi: {due_date}\nUrg'atish: {priority}\nYaratilgan: {created_at}\nYaratuvchi: {user['fullname']}\n\nIltimos, vazifalar ro'yxatingizni tekshiring."
+    }
+
 
     # Send confirmation message and notify the assignee
     if lang == 'en':
@@ -51,6 +70,8 @@ async def confirming_task(callback: types.CallbackQuery, state: FSMContext):
         await callback.message.answer("Vazifa muvaffaqiyatli yaratildi. Agar siz boshqa vazifa yaratmoqchi bo'lsangiz, pastdagi tugmani bosing.")
         await bot.send_message(worker['user_id'], f"Sizga yangi vazifa berildi:\n\nSarlavha: {task_title}\nTavsif: {task_description}\nBoshlanish sanasi: {start_date}\nTugash sanasi: {due_date}\nUrg'atish: {priority}\nYaratilgan: {created_at}\nYaratuvchi: {user['fullname']}\n\nIltimos, vazifalar ro'yxatingizni tekshiring.")
     
+    await callback.message.answer(send_text[lang])
+    await bot.send_message(worker['user_id'], notify_worker_text[f"{lang}_{"project" if project_id else "company"}"])
     await state.clear()
     await callback.message.delete_reply_markup()
     await navigate_to_main_menu(user_id, callback.message.chat.id, state)

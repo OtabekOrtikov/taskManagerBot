@@ -4,6 +4,7 @@ from aiogram.filters import StateFilter
 from aiogram.types import ReplyKeyboardRemove
 import asyncio
 
+from tasks.creation.assignee_phone import process_assignee_phone
 from tasks.creation.list_workers import process_list_workers
 from tasks.creation.priority import progress_task_priority
 from tasks.creation.task_confirmation import confirming_task
@@ -124,6 +125,7 @@ router.message(StateFilter(TaskCreation.task_title))(process_task_title)
 router.message(StateFilter(TaskCreation.task_description))(process_task_description)
 router.message(StateFilter(TaskCreation.start_date))(process_start_date)
 router.message(StateFilter(TaskCreation.due_date))(process_due_date)
+router.message(StateFilter(TaskCreation.task_assignee_phone))(process_assignee_phone)
 
 # commands
 router.message(F.text == "/deletedb")(delete_db)
