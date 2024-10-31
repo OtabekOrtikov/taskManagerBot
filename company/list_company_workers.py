@@ -25,7 +25,11 @@ async def list_workers(callback: types.CallbackQuery, state: FSMContext):
 
     async with db_pool.acquire() as connection:
         # Fetch all workers for pagination
-        workers = await connection.fetch("SELECT * FROM users WHERE company_id = $1", user['company_id'])
+        if user['role_id'] == 1:
+            workers = await connection.fetch("SELECT * FROM users WHERE company_id = $1", user['company_id'])
+        else:
+            workers = await connection.fetch("SELECT * FROM users WHERE company_id = $1 AND department_id = $2", user['company_id'], user['department_id'])
+
         company = await connection.fetchrow("SELECT * FROM company WHERE id = $1", user['company_id'])
 
     # Calculate total pages

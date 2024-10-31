@@ -19,8 +19,11 @@ async def show_project_tasks(callback: types.CallbackQuery, state: FSMContext):
     lang = user['lang']
 
     async with db_pool.acquire() as connection:
-        tasks = await connection.fetch("SELECT * FROM task WHERE project_id = $1", project_id)
-        worker = await connection.fetch("SELECT * FROM users WHERE id = $1", task['task_assignee_id'])
+        tasks = await connection.fetch("""SELECT t.id as task_id, t.task_title, u.fullname
+                                          FROM task t
+                                          JOIN users u ON t.task_assignee_id = u.id
+                                          WHERE t.project_id = $1""", 
+                                      project_id)
     
     text = {
         'en': f"Tasks for project:\n\n",
@@ -35,7 +38,7 @@ async def show_project_tasks(callback: types.CallbackQuery, state: FSMContext):
         text[lang] += "No tasks found."
 
     for task in tasks:
-        keyboard.append([InlineKeyboardButton(text=f"{task['task_title']} - {worker['fullname']}", callback_data=f"task_info_{task['id']}")])
+        keyboard.append([InlineKeyboardButton(text=f"{task['task_title']} - {task['fullname']}", callback_data=f"task_info_{task['task_id']}")])
     
     keyboard.append([InlineKeyboardButton(text=back_page[lang], callback_data=f"project_info_{project_id}")])   
     await callback.message.edit_text(text=text[lang], reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))

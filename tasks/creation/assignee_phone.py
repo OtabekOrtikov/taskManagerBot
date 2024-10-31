@@ -28,8 +28,10 @@ async def process_assignee_phone(message: types.Message, state: FSMContext):
 
     # Fetch the worker from the database
     async with db.acquire() as connection:
-        worker = await connection.fetchrow("SELECT * FROM users WHERE phone_number = $1 AND role_id != 1", assignee_phone)
-
+        if user['role_id'] == 1:
+            worker = await connection.fetchrow("SELECT * FROM users WHERE phone_number = $1 AND role_id != 1 AND company_id = $2", assignee_phone, user['company_id'])
+        else:
+            worker = await connection.fetchrow("SELECT * FROM users WHERE phone_number = $1 AND role_id = 3 AND company_id = $2 AND department_id = $3", assignee_phone, user['company_id'], user['department_id'])
     # Handle case where no worker is found
     if not worker:
         no_worker_text = {

@@ -1,9 +1,16 @@
-from aiogram import types, Router, F
+from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database.db_utils import get_user, get_db_pool
 
 async def show_worker(callback: types.CallbackQuery, state: FSMContext):
+    message_data = await state.get_data()
+    last_button_message_id = message_data.get("main_menu_message_id")
+
+    if callback.message.message_id != last_button_message_id:
+        await callback.answer("This button is no longer active.")
+        return
+
     db_pool = get_db_pool()
     user_id = callback.from_user.id
     user = await get_user(user_id)
@@ -14,80 +21,72 @@ async def show_worker(callback: types.CallbackQuery, state: FSMContext):
 
     async with db_pool.acquire() as connection:
         worker = await connection.fetchrow("SELECT * FROM users WHERE id = $1", worker_id)
-        department = await connection.fetchrow("SELECT * FROM department WHERE id = $1", worker['department_id'])
+        if worker:
+            department = await connection.fetchrow("SELECT * FROM department WHERE id = $1", worker['department_id']) if worker['department_id'] else None
 
-    if worker['role_id'] == 1:
-        if lang == 'ru':
-            worker_role = "Руководитель"
-        elif lang == 'uz':
-            worker_role = "Boshqaruvchi"
-        elif lang == 'en':
-            worker_role = "Boss"
-    elif worker['role_id'] == 2:
-        if lang == 'ru':
-            worker_role = "Руководитель отдела"
-        elif lang == 'uz':
-            worker_role = "Bo‘lim boshqaruvchisi"
-        elif lang == 'en':
-            worker_role = "Department head"
-    else:
-        if lang == 'ru':
-            worker_role = "Сотрудник"
-        elif lang == 'uz':
-            worker_role = "Xodim"
-        elif lang == 'en':
-            worker_role = "Employee"
+    # Define roles based on language and role_id
+    roles = {
+        1: {"ru": "Руководитель", "uz": "Boshqaruvchi", "en": "Boss"},
+        2: {"ru": "Руководитель отдела", "uz": "Bo‘lim boshqaruvchisi", "en": "Department head"},
+        3: {"ru": "Сотрудник", "uz": "Xodim", "en": "Employee"}
+    }
+    worker_role = roles.get(worker['role_id'], {}).get(lang, "Employee")
 
-    if lang == 'en':
-        text = f"Worker details:\n"
-        text += f"Full name: {worker['fullname']}\n"
-        text += f"Username: {f"@{worker['username']}" if worker['username'] else ""}\n" 
-        text += f"Phone: {worker['phone_number']}\n"
-        text += f"Birthdate: {worker['birthdate']}\n"
-        text += f"Position: {worker_role}\n"
-        text += f"Department: {department['department_name']}\n\n"
-        if user['role_id'] == 1:
-            text += f"Do you want to change the user role? Use the buttons below."
-    elif lang == 'ru':
-        text = f"Информация о сотруднике:\n"
-        text += f"ФИО: {worker['fullname']}\n"
-        text += f"Имя пользователя: {f'@{worker['username']}' if worker['username'] else ''}\n"
-        text += f"Телефон: {worker['phone_number']}\n"
-        text += f"Дата рождения: {worker['birthdate']}\n"
-        text += f"Должность: {worker_role}\n"
-        text += f"Отдел: {department['department_name']}\n\n"
-        if user['role_id'] == 1:
-            text += f"Хотите изменить роль пользователя? Используйте кнопки ниже."
-    elif lang == 'uz':
-        text = f"Xodim ma'lumotlari:\n"
-        text += f"FIO: {worker['fullname']}\n"
-        text += f"Foydalanuvchi nomi: {f'@{worker['username']}' if worker['username'] else ''}\n"
-        text += f"Telefon raqami: {worker['phone_number']}\n"
-        text += f"Tug'ilgan kun: {worker['birthdate']}\n"
-        text += f"Lavozimi: {worker_role}\n"
-        text += f"Bo'lim: {department['department_name']}\n\n"
-        if user['role_id'] == 1:
-            text += f"Foydalanuvchi lavozimini o'zgartirmoqchimisiz? Quyidagi tugmalar orqali ishlatishingiz mumkin."
+    # Generate text based on language
+    text_template = {
+        'en': (
+            "Worker details:\n"
+            f"Full name: {worker['fullname']}\n"
+            f"Username: {'@' + worker['username'] if worker['username'] else ''}\n"
+            f"Phone: {worker['phone_number']}\n"
+            f"Birthdate: {worker['birthdate']}\n"
+            f"Position: {worker_role}\n"
+            f"Department: {department['department_name'] if department else 'N/A'}\n\n"
+            + (f"Do you want to change the user role? Use the buttons below." if user['role_id'] == 1 else "")
+        ),
+        'ru': (
+            "Информация о сотруднике:\n"
+            f"ФИО: {worker['fullname']}\n"
+            f"Имя пользователя: {'@' + worker['username'] if worker['username'] else ''}\n"
+            f"Телефон: {worker['phone_number']}\n"
+            f"Дата рождения: {worker['birthdate']}\n"
+            f"Должность: {worker_role}\n"
+            f"Отдел: {department['department_name'] if department else 'N/A'}\n\n"
+            + (f"Хотите изменить роль пользователя? Используйте кнопки ниже." if user['role_id'] == 1 else "")
+        ),
+        'uz': (
+            "Xodim ma'lumotlari:\n"
+            f"FIO: {worker['fullname']}\n"
+            f"Foydalanuvchi nomi: {'@' + worker['username'] if worker['username'] else ''}\n"
+            f"Telefon raqami: {worker['phone_number']}\n"
+            f"Tug'ilgan kun: {worker['birthdate']}\n"
+            f"Lavozimi: {worker_role}\n"
+            f"Bo'lim: {department['department_name'] if department else 'N/A'}\n\n"
+            + (f"Foydalanuvchi lavozimini o'zgartirmoqchimisiz? Quyidagi tugmalar orqali ishlatishingiz mumkin." if user['role_id'] == 1 else "")
+        )
+    }
+    text = text_template.get(lang, text_template['en'])
 
-    # Build message text and keyboard
-    keyboard = []
+    # Build the inline keyboard based on language
+    keyboard = [
+        [InlineKeyboardButton(
+            text="List worker tasks" if lang == 'en' else "Список задач сотрудника" if lang == 'ru' else "Xodim vazifalari ro‘yxati",
+            callback_data=f"list_tasks_{worker_id}"
+        )]
+    ]
+    if user['role_id'] == 1:
+        keyboard.append([
+            InlineKeyboardButton(
+                text="Change user role" if lang == 'en' else "Изменить роль пользователя" if lang == 'ru' else "Foydalanuvchi lavozimini o'zgartirish",
+                callback_data=f"change_user_role_{worker_id}"
+            )
+        ])
+    keyboard.append([
+        InlineKeyboardButton(
+            text="🔙 Назад" if lang == 'ru' else "🔙 Orqaga" if lang == 'uz' else "🔙 Back",
+            callback_data="list_workers"
+        )
+    ])
 
-    if lang == 'en':
-        keyboard.append([InlineKeyboardButton(text="List worker tasks", callback_data=f"list_tasks_{worker_id}")])
-        if user['role_id'] == 1:
-            keyboard.append([InlineKeyboardButton(text="Change user role", callback_data=f"change_user_role_{worker_id}")])
-    elif lang == 'ru':
-        keyboard.append([InlineKeyboardButton(text="Список задач сотрудника", callback_data=f"list_tasks_{worker_id}")])
-        if user['role_id'] == 1:
-            keyboard.append([InlineKeyboardButton(text="Изменить роль пользователя", callback_data=f"change_user_role_{worker_id}")])
-    elif lang == 'uz':
-        keyboard.append([InlineKeyboardButton(text="Xodim vazifalari ro‘yxati", callback_data=f"list_tasks_{worker_id}")])
-        if user['role_id'] == 1:
-            keyboard.append([InlineKeyboardButton(text="Foydalanuvchi lavozimini o'zgartirish", callback_data=f"change_user_role_{worker_id}")])
-
-    # Add a back button
-    keyboard.append([InlineKeyboardButton(text="🔙 Назад" if lang == 'ru' else "🔙 Orqaga", callback_data="list_workers")])
-
-    # Send the message
     await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
     await state.update_data(main_menu_message_id=callback.message.message_id)

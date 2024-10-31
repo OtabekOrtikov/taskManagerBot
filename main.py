@@ -4,20 +4,26 @@ from aiogram.filters import StateFilter
 from aiogram.types import ReplyKeyboardRemove
 import asyncio
 
-from company.project.company_projects import show_company_projects
-from company.project.project_info import show_project_info
-from company.project.project_task import show_project_tasks
-from company.project.project_workers import show_project_workers
+from department.creation_department import creation_department
+from projects.company_projects import show_company_projects
+from projects.project_info import show_project_info
+from projects.project_task import show_project_tasks
+from projects.project_workers import show_project_workers
 from company.show_company_tasks import show_company_tasks
 from tasks.creation.assignee_phone import process_assignee_phone
 from tasks.creation.list_workers import process_list_workers
 from tasks.creation.priority import progress_task_priority
 from tasks.creation.task_confirmation import confirming_task
+from tasks.edit_info.edit_status import cancel_task, confirm_cancel_task, continue_task, finish_task, pause_task, start_task
+from tasks.edit_info.edit_task import edit_task_description, edit_task_due_date, edit_task_info, edit_task_key_info, edit_task_priority, edit_task_start_date, edit_task_title, edit_today_date
+from tasks.my_tasks import list_my_tasks
 from tasks.task_info import task_info
 from utils.back_main import back_to_main_menu
 from commands.deletedb import delete_db
 from commands.start import start_command
 from tasks.creation.set_today_date import set_today_date
+from worker.change_role import change_user_role
+from worker.list_worker_tasks import list_worker_tasks
 from worker.show_worker import show_worker
 from database.db_utils import *
 
@@ -98,6 +104,10 @@ router.callback_query.register(activate_department.activate_department, F.data.s
 router.callback_query.register(activate_department.confirm_activate_department, F.data.startswith("confirm_activate_department_"))
 router.callback_query.register(show_worker, F.data.startswith("show_worker_"))
 router.callback_query.register(show_company_tasks, F.data.startswith("show_company_tasks"))
+router.callback_query.register(list_worker_tasks, F.data.startswith("list_tasks_"))
+router.callback_query.register(change_user_role, F.data.startswith("change_user_role_"))
+router.callback_query.register(list_my_tasks, F.data.startswith("list_my_tasks"))
+router.callback_query.register(creation_department, F.data == "create_department")
 
 router.callback_query.register(create_task, F.data == "create_task")
 router.callback_query.register(create_project_task, F.data.startswith("create_project_task_"))
@@ -109,6 +119,16 @@ router.callback_query.register(progress_task_priority, F.data.startswith("task_p
 router.callback_query.register(confirming_task, F.data == "task_confirm")
 
 router.callback_query.register(task_info, F.data.startswith("task_info_"))
+router.callback_query.register(edit_task_info, F.data.startswith("edit_task_"))
+router.callback_query.register(edit_task_key_info, F.data.startswith("edit_info_task_"))
+router.callback_query.register(start_task, F.data.startswith("start_task_"))
+router.callback_query.register(pause_task, F.data.startswith("pause_task_"))
+router.callback_query.register(finish_task, F.data.startswith("finish_task_"))
+router.callback_query.register(cancel_task, F.data.startswith("cancel_task_"))
+router.callback_query.register(continue_task, F.data.startswith("continue_task_"))
+router.callback_query.register(confirm_cancel_task, F.data.startswith("confirm_cancel_task_"))
+router.callback_query.register(edit_today_date, F.data.startswith("edit_today_date_"))
+router.callback_query.register(edit_task_priority, F.data.startswith("edit_priority_task_"))
 
 router.callback_query.register(create_project, F.data == "create_project")
 router.callback_query.register(show_company_projects, F.data.startswith("show_company_projects"))
@@ -140,6 +160,12 @@ router.message(StateFilter(TaskCreation.start_date))(process_start_date)
 router.message(StateFilter(TaskCreation.due_date))(process_due_date)
 router.message(StateFilter(TaskCreation.task_assignee_phone))(process_assignee_phone)
 
+# task change
+router.message(StateFilter(TaskChanges.task_title))(edit_task_title)
+router.message(StateFilter(TaskChanges.task_description))(edit_task_description)
+router.message(StateFilter(TaskChanges.start_date))(edit_task_start_date)
+router.message(StateFilter(TaskChanges.due_date))(edit_task_due_date)
+
 # commands
 router.message(F.text == "/deletedb")(delete_db)
 
@@ -154,12 +180,10 @@ async def notify_users_about_restart():
             await bot.send_message(user['user_id'], "The bot has been restarted. Please use /start to continue.", reply_markup=ReplyKeyboardRemove())
         except Exception as e:
             print(f"Error notifying user {user['user_id']}: {e}")
-
 async def main():
     await init_db()  # Initialize the database pool before starting the bot
     dp.include_router(router)  # Register the router with the dispatcher
     await notify_users_about_restart()  # Notify users about the bot restart
-    print("Bot started!")  # Debugging info
     await dp.start_polling(bot)
 
 if __name__ == '__main__':

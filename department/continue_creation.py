@@ -5,8 +5,6 @@ from aiogram import types
 from states import DepartmentCreation
 
 async def continue_department_creation(callback: types.CallbackQuery, state: FSMContext):
-    lang = await get_user_lang(callback.from_user.id)
-
     data = await state.get_data()
     main_menu_message_id = data.get("main_menu_message_id")
 
@@ -14,6 +12,7 @@ async def continue_department_creation(callback: types.CallbackQuery, state: FSM
         await callback.answer(f"This button is no longer active.")
         return
 
+    lang = await get_user_lang(callback.from_user.id)
     if lang == 'ru':
         prompt_text = "Введите название следующего отдела."
     else:

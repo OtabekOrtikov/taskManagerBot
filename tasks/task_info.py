@@ -4,6 +4,9 @@ from database.db_utils import get_db_pool, get_user
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import types
 
+from utils.parse_status import parse_status
+from utils.priority_parser import parse_priority
+
 async def task_info(callback: types.CallbackQuery, state: FSMContext):
     message_data = await state.get_data()
     last_button_message_id = message_data.get("main_menu_message_id")
@@ -48,7 +51,7 @@ async def task_info(callback: types.CallbackQuery, state: FSMContext):
 """, task_id)
         owner_id = task['owner_user_id']
         worker_id = task['worker_user_id']
-        status = task['task_status']
+        status = await parse_status(task['task_status'], lang)
 
     task_text = {
         'en': f"""
@@ -56,8 +59,8 @@ Task: {task['task_title']}
 Description: {task['task_description']}
 Start date: {task['start_date']}
 Due date: {task['due_date']}
-Status: {task['task_status']}
-Priority: {task['priority']}
+Status: {status}
+Priority: {await parse_priority(task['priority'], 'en')}
 {f"Project: {task['project_name']}" if task['project_name'] else ""}
 Created by: {task['owner_fullname']}
 Creator phone number: {task['owner_phone_number']}
@@ -68,15 +71,15 @@ Phone number: {task['worker_phone_number']}
 {f"Paused: {task.get('paused_at')}" if task.get('paused_at') else ""}
 {f"Continued: {task.get('continued_at')}" if task.get('continued_at') else ""}
 {f"Finished: {task.get('finished_at')}" if task.get('finished_at') else ""}
-{f"Cancelled: {task.get('cancelled_at')}" if task.get('cancelled_at') else ""}
+{f"Cancelled: {task.get('canceled_at')}" if task.get('cancelled_at') else ""}
 """,
         'ru': f"""
 Задача: {task['task_title']}
 Описание: {task['task_description']}
 Дата начала: {task['start_date']}
 Дата завершения: {task['due_date']}
-Статус: {task['task_status']}
-Приоритет: {task['priority']}
+Статус: {status}
+Приоритет: {await parse_priority(task['priority'], 'ru')}
 {f"Проект: {task['project_name']}" if task['project_name'] else ""}
 Создана: {task['owner_fullname']}
 Телефон создателя: {task['owner_phone_number']}
@@ -87,15 +90,15 @@ Phone number: {task['worker_phone_number']}
 {f"Приостановлена: {task.get('paused_at')}" if task.get('paused_at') else ""}
 {f"Продолжена: {task.get('continued_at')}" if task.get('continued_at') else ""}
 {f"Завершена: {task.get('finished_at')}" if task.get('finished_at') else ""}
-{f"Отменена: {task.get('cancelled_at')}" if task.get('cancelled_at') else ""}
+{f"Отменена: {task.get('canceled_at')}" if task.get('cancelled_at') else ""}
 """,
         'uz': f"""
 Vazifa: {task['task_title']}
 Tavsif: {task['task_description']}
 Boshlanish sanasi: {task['start_date']}
 Tugash sanasi: {task['due_date']}
-Holat: {task['task_status']}
-Urg'anchilik: {task['priority']}
+Holat: {status}
+Urg'anchilik: {await parse_priority(task['priority'], 'uz')}
 {f"Proyekt: {task['project_name']}" if task['project_name'] else ""}
 Yaratuvchi: {task['owner_fullname']}
 Yaratuvchi telefon raqami: {task['owner_phone_number']}
@@ -106,7 +109,7 @@ Ijrochi telefon raqami: {task['worker_phone_number']}
 {f"To‘xtatildi: {task.get('paused_at')}" if task.get('paused_at') else ""}
 {f"Davom ettirildi: {task.get('continued_at')}" if task.get('continued_at') else ""}
 {f"Yakunlandi: {task.get('finished_at')}" if task.get('finished_at') else ""}
-{f"Bekor qilindi: {task.get('cancelled_at')}" if task.get('cancelled_at') else ""}
+{f"Bekor qilindi: {task.get('canceled_at')}" if task.get('cancelled_at') else ""}
 """
     }
 
@@ -149,12 +152,12 @@ Ijrochi telefon raqami: {task['worker_phone_number']}
     
     keyboard = []
 
-    if user_id == owner_id:
+    if user_id == owner_id or user['role_id'] == 1:
         keyboard.append(
             [InlineKeyboardButton(text=keyboard_text['owner'][lang]['edit'], callback_data=f'edit_task_{task_id}')]
         )
         keyboard.append(
-            [InlineKeyboardButton(text=keyboard_text['owner'][lang]['delete'], callback_data=f'delete_task_{task_id}')]
+            [InlineKeyboardButton(text=keyboard_text['owner'][lang]['delete'], callback_data=f'cancel_task_{task_id}')]
         )
     elif user_id == worker_id:
         if status == 'Not started':

@@ -16,9 +16,6 @@ async def set_lang(callback: types.CallbackQuery, state: FSMContext):
     # Respond to the callback query to avoid the alert
     await callback.answer()
 
-    # Debugging to check if the callback handler is triggered
-    print(f"Language set to: {lang} for user: {user_id}")
-
     async with db_pool.acquire() as connection:
         await connection.execute("UPDATE users SET lang = $1 WHERE user_id = $2", lang, user_id)
 

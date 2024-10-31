@@ -26,7 +26,7 @@ async def finish_department_creation(callback: types.CallbackQuery, state: FSMCo
 
     if lang == 'ru':
         for department in departments:
-            referal_link = f"https://t.me/{BOT_USERNAME}?start={company_id}_group={department['id']}"
+            referal_link = f"https://t.me/{BOT_USERNAME}?start={company_id}_department={department['id']}"
             share_link = f"https://t.me/share/url?url={referal_link}&text=Ребята, нажмите, пожалуйста, на ссылку, чтобы получить задачу от начальства."
             keyboard.append([InlineKeyboardButton(text=f"Отдел: {department['department_name']}", url=share_link)])
         await callback.message.edit_text("""
@@ -37,7 +37,7 @@ P.s: Первый кто зайдет по этой ссылке будет ру
         )
     else:
         for department in departments:
-            referal_link = f"https://t.me/{BOT_USERNAME}?start={company_id}_group={department['id']}"
+            referal_link = f"https://t.me/{BOT_USERNAME}?start={company_id}_department={department['id']}"
             share_link = f"https://t.me/share/url?url={referal_link}&text=Yigitlar, boshliqdan vazifa olish uchun quyidagi havolaga kiring."
             keyboard.append([InlineKeyboardButton(text=f"Bo'lim: {department['department_name']}", url=share_link)])
         await callback.message.edit_text("""

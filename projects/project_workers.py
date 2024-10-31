@@ -13,8 +13,6 @@ async def show_project_workers(callback: types.CallbackQuery, state: FSMContext)
         await callback.answer("This button is no longer active.")
         return
 
-    print(callback.data)
-    
     project_id = int(callback.data.split("_")[-1]) if len(callback.data.split("_")) > 3 and len(callback.data.split("_")) < 5 else int(callback.data.split("_")[-2])
     page = int(callback.data.split("_")[-1]) if len(callback.data.split("_")) > 4 else 1
     db_pool = get_db_pool()

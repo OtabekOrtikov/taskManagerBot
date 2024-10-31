@@ -15,7 +15,6 @@ async def confirming_task(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer("This button is no longer active.")
         return
 
-    print("Task confirmation")
     user_id = callback.from_user.id
     user = await get_user(user_id)
     lang = user['lang']

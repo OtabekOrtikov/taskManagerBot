@@ -49,7 +49,7 @@ async def list_department_workers(callback: types.CallbackQuery, state: FSMConte
     text = f"Список сотрудников отдела ‘{department['department_name']}’ компании ‘**{company['company_name']}**’:" if user['lang'] == 'ru' else f"‘**{company['company_name']}**’ kompaniyasining xodimlari ro‘yxati:"
     keyboard = []
 
-    referal_link = f"https://t.me/{BOT_USERNAME}?start={company['id']}_group={department_id}"
+    referal_link = f"https://t.me/{BOT_USERNAME}?start={company['id']}_department={department_id}"
 
     # Worker buttons
     if total_workers > 0:

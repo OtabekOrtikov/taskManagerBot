@@ -1,9 +1,6 @@
 from aiogram.fsm.context import FSMContext
 from btns import company_info_btns
-from database.db_utils import get_db_pool, get_user, get_user_lang
-from menu.main_menu import navigate_to_main_menu
-from states import CompanyChanges
-from aiogram.types import InlineKeyboardMarkup
+from database.db_utils import get_db_pool, get_user
 from aiogram import types
 
 async def edit_company_info(callback: types.CallbackQuery, state: FSMContext):

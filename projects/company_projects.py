@@ -48,9 +48,7 @@ async def show_company_projects(callback: types.CallbackQuery, state: FSMContext
     }
     keyboard = []
 
-    if total_projects == 0:
-        text[lang] += "No projects found."
-        keyboard.append([InlineKeyboardButton(text=keyboard_text[lang], callback_data="create_project")])
+    keyboard.append([InlineKeyboardButton(text=keyboard_text[lang], callback_data="create_project")])
 
     for project in current_projects:
         keyboard.append([InlineKeyboardButton(text=f"{project['project_name']}", callback_data=f"project_info_{project['id']}")])
@@ -65,7 +63,6 @@ async def show_company_projects(callback: types.CallbackQuery, state: FSMContext
     try:
         await callback.message.edit_text(text=text[lang], reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
     except Exception as e:
-        print(e)
         await callback.answer("An error occurred. Please try again later.")
         return
     

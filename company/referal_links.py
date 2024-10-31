@@ -20,7 +20,10 @@ async def show_referal_links(callback: types.CallbackQuery, state: FSMContext):
 
     async with db_pool.acquire() as connection:
         company = await connection.fetchrow("SELECT * FROM company WHERE id = $1", user['company_id'])
-        departments = await connection.fetch("SELECT * FROM department WHERE company_id = $1", user['company_id'])
+        if user['role_id'] == 1:
+            departments = await connection.fetch("SELECT * FROM department WHERE company_id = $1", user['company_id'])
+        else:
+            departments = await connection.fetch("SELECT * FROM department WHERE company_id = $1 AND id = $2", user['company_id'], user['department_id'])
 
     text = f"Список реферальных ссылок для компании ‘**{company['company_name']}**’:" if user['lang'] == 'ru' else f"‘**{company['company_name']}**’ kompaniyasining referal havolalari ro‘yxati:"
     keyboard = []

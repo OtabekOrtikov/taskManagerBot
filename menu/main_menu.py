@@ -23,20 +23,35 @@ async def navigate_to_main_menu(user_id: int, chat_id: int, state: FSMContext):
 
     lang = user['lang']
 
+    text = {
+        'en': "Main menu",
+        'ru': "Главное меню",
+        'uz': "Asosiy menyu"
+    }
+
     # Set up menu text and dynamically create keyboard based on role and language
-    main_menu_text = "Главное меню" if lang == 'ru' else "Asosiy menyum"
-    keyboard = main_menu_btns[lang]
+    keyboard = []
+
+    if user['role_id'] == 1:
+        # Admin
+        keyboard = main_menu_btns['boss'][lang]
+    elif user['role_id'] == 2:
+        # Manager
+        keyboard = main_menu_btns['manager'][lang]
+    else:
+        # Employee
+        keyboard = main_menu_btns['worker'][lang]
 
     # Attempt to edit the existing main menu message or send a new one if editing fails
     if main_menu_message_id:
         try:
             await bot.edit_message_text(
-                main_menu_text, chat_id=chat_id,
+                text[lang], chat_id=chat_id,
                 message_id=main_menu_message_id, reply_markup=keyboard
             )
         except Exception:
-            sent_message = await bot.send_message(chat_id, main_menu_text, reply_markup=keyboard)
+            sent_message = await bot.send_message(chat_id, text[lang], reply_markup=keyboard)
             await state.update_data(main_menu_message_id=sent_message.message_id)
     else:
-        sent_message = await bot.send_message(chat_id, main_menu_text, reply_markup=keyboard)
+        sent_message = await bot.send_message(chat_id, text[lang], reply_markup=keyboard)
         await state.update_data(main_menu_message_id=sent_message.message_id)

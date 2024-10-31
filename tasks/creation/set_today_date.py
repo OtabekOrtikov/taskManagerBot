@@ -23,7 +23,6 @@ async def set_today_date(callback: types.CallbackQuery, state: FSMContext):
 
     # Update state with the validated start date
     await state.update_data(start_date=start_date)
-    print(start_date)
 
     # Prepare the keyboard and send a confirmation message in the user's language
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[back_to_main[lang]]])

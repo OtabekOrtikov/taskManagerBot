@@ -1,5 +1,6 @@
 import asyncpg
 from config import DATABASE_URL
+from utils.priority_parser import parse_priority_id
 
 db_pool = None
 
@@ -69,6 +70,7 @@ async def init_db():
                     paused_at TIMESTAMP,
                     continued_at TIMESTAMP,
                     finished_at TIMESTAMP,
+                    canceled_at TIMESTAMP,
                     project_id INT REFERENCES project(id) ON DELETE SET NULL
                 );
             """)
@@ -86,8 +88,6 @@ async def get_user(telegram_id: int):
         raise Exception("Database pool has not been initialized. Call init_db first.")
     async with db_pool.acquire() as connection:
         user = await connection.fetchrow("SELECT * FROM users WHERE user_id = $1", telegram_id)
-        if user is None:
-            print(f"[Debug] No user found in DB for telegram_id={telegram_id}")
         return user
 
 async def get_user_lang(telegram_id):
@@ -105,6 +105,7 @@ async def get_department_manager(connection, company_id, department_id):
 
 async def create_task(connection, task_title, task_description, start_date, due_date, task_owner_id, task_assignee_id, priority, project_id, created_at):
     """Creates a task in the database."""
+    priority_id = await parse_priority_id(priority)
     if project_id:
         await connection.execute("""
             INSERT INTO task (
@@ -128,7 +129,7 @@ async def create_task(connection, task_title, task_description, start_date, due_
             'Not started',
             task_owner_id,
             task_assignee_id,
-            priority,
+            priority_id,
             project_id,
             created_at)
     else:
@@ -153,7 +154,7 @@ async def create_task(connection, task_title, task_description, start_date, due_
             'Not started',
             task_owner_id,
             task_assignee_id,
-            priority,
+            priority_id,
             created_at)
         
 async def get_task_with(connection, task_id):
