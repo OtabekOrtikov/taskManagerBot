@@ -27,6 +27,8 @@ async def init_db():
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(50) NOT NULL
                 );
+                                     
+                INSERT INTO role (id, name) VALUES (1, 'Boss'), (2, 'Manager'), (3, 'Worker') ON CONFLICT DO NOTHING;
 
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
