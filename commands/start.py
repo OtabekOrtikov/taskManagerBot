@@ -3,6 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database.db_utils import get_db_pool, get_user, add_user_with_role, get_department_manager
 from menu.main_menu import navigate_to_main_menu
+from utils.asking_missed_fields import asking_missed_fields
 
 async def start_command(message: types.Message, state: FSMContext):
     db_pool = get_db_pool()
@@ -65,5 +66,9 @@ Salom! Men sizga loyihalarni boshqarishda yordam beraman. Boshlash uchun tilni t
             send_message = await message.answer(text, reply_markup=keyboard)
             await state.update_data(main_menu_message_id=send_message.message_id)
         else:
-            # Navigate to the main menu if user already exists
+            # Check if any required fields are missing, and prompt the user to fill them
+            if not await asking_missed_fields(message, state):
+                return  # Exit if fields are missing, as asking_missed_fields will handle the prompts
+
+            # Navigate to the main menu if all fields are filled
             await navigate_to_main_menu(user_id, message.chat.id, state)

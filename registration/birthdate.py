@@ -39,8 +39,9 @@ async def process_birthdate(message: types.Message, state: FSMContext):
                 UPDATE users SET birthdate = $1 WHERE user_id = $2
             """, date_obj.date(), message.from_user.id)
             boss_id = await connection.fetchval("SELECT user_id FROM users WHERE company_id = $1 AND role_id = 1", user['company_id'])
-            department = await connection.fetchrow("SELECT department_name FROM departments WHERE id = $1", user['department_id'])
-            manager_id = await connection.fetchval("SELECT user_id FROM users WHERE company_id = $1 AND department_id = $2 AND role_id = 2", user['company_id'], user['department_id'])
+            if user['department_id']:
+                department = await connection.fetchrow("SELECT department_name FROM departments WHERE id = $1", user['department_id'])
+                manager_id = await connection.fetchval("SELECT user_id FROM users WHERE company_id = $1 AND department_id = $2 AND role_id = 2", user['company_id'], user['department_id'])
 
         # Proceed to the next state
         if user_role == 1 and user['company_id'] is None:

@@ -184,6 +184,7 @@ async def main():
     await init_db()  # Initialize the database pool before starting the bot
     dp.include_router(router)  # Register the router with the dispatcher
     await notify_users_about_restart()  # Notify users about the bot restart
+    print("Bot started.")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
