@@ -2,6 +2,8 @@ API_TOKEN = '7314896845:AAE4AXQdXTaeaN-BfegtS2EbzHKi7U68OOw'
 
 BOT_USERNAME = 'ManageTaskBot'
 
-max_user_per_page = 10
+DATABASE_URL = 'postgresql://postgres:01042006Otabek!@localhost:5432/TaskManagerBot'
 
-max_task_per_page = 5
+drop_table = 'drop table company, department, project, task, user_m2m_project, users'
+
+PAGE_SIZE = 5
