@@ -50,13 +50,6 @@ async def init_db():
                     boss_id BIGINT REFERENCES users(id) ON DELETE SET NULL
                 );
 
-                CREATE TABLE IF NOT EXISTS user_m2m_project (
-                    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-                    project_id BIGINT REFERENCES project(id) ON DELETE CASCADE,
-                    role VARCHAR(50),
-                    PRIMARY KEY (user_id, project_id)
-                );
-
                 CREATE TABLE IF NOT EXISTS task (
                     id SERIAL PRIMARY KEY,
                     task_title VARCHAR(30) NOT NULL,
@@ -107,7 +100,7 @@ async def get_department_manager(connection, company_id, department_id):
 
 async def create_task(connection, task_title, task_description, start_date, due_date, task_owner_id, task_assignee_id, priority, project_id, created_at):
     """Creates a task in the database."""
-    priority_id = await parse_priority_id(priority)
+    priority_id = str(await parse_priority_id(priority))
     if project_id:
         await connection.execute("""
             INSERT INTO task (

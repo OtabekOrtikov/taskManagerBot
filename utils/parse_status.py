@@ -3,7 +3,7 @@ async def parse_status(status: str, lang: str) -> str:
         text = {
             'en': "In progress",
             'ru': "В процессе",
-            'uz': "Prosessda"
+            'uz': "Jarayonda"
         }
     elif status == "Not started":
         text = {
@@ -16,6 +16,12 @@ async def parse_status(status: str, lang: str) -> str:
             'en': "Paused",
             'ru': "Приостановлена",
             'uz': "To‘xtatilgan"
+        }
+    elif status == "Cancelled":
+        text = {
+            'en': "Cancelled",
+            'ru': "Отменена",
+            'uz': "Bekor qilingan"
         }
     else:
         text = {

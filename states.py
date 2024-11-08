@@ -44,6 +44,6 @@ class TaskChanges(StatesGroup):
     task_id = State()
     task_title = State()
     task_description = State()
-    start_date = State()
-    due_date = State()
+    new_start_date = State()
+    new_due_date = State()
     priority = State()

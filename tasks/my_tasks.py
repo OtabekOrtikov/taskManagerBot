@@ -39,8 +39,8 @@ async def list_my_tasks(callback: types.CallbackQuery, state: FSMContext):
 
     text = {
         'en': f"Your tasks:\n\n",
-        'ru': f"Задачи для {company['company_name']}:\n\n",
-        'uz': f"{company['company_name']} uchun vazifalar:\n\n"
+        'ru': f"Ваши задачи:\n\n",
+        'uz': f"Sizning vazifalaringiz:\n\n"
     }
     keyboard = []
 

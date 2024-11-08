@@ -71,7 +71,7 @@ Phone number: {task['worker_phone_number']}
 {f"Paused: {task.get('paused_at')}" if task.get('paused_at') else ""}
 {f"Continued: {task.get('continued_at')}" if task.get('continued_at') else ""}
 {f"Finished: {task.get('finished_at')}" if task.get('finished_at') else ""}
-{f"Cancelled: {task.get('canceled_at')}" if task.get('cancelled_at') else ""}
+{f"Cancelled: {task.get('canceled_at')}" if task.get('canceled_at') else ""}
 """,
         'ru': f"""
 Задача: {task['task_title']}
@@ -90,7 +90,7 @@ Phone number: {task['worker_phone_number']}
 {f"Приостановлена: {task.get('paused_at')}" if task.get('paused_at') else ""}
 {f"Продолжена: {task.get('continued_at')}" if task.get('continued_at') else ""}
 {f"Завершена: {task.get('finished_at')}" if task.get('finished_at') else ""}
-{f"Отменена: {task.get('canceled_at')}" if task.get('cancelled_at') else ""}
+{f"Отменена: {task.get('canceled_at')}" if task.get('canceled_at') else ""}
 """,
         'uz': f"""
 Vazifa: {task['task_title']}
@@ -109,7 +109,7 @@ Ijrochi telefon raqami: {task['worker_phone_number']}
 {f"To‘xtatildi: {task.get('paused_at')}" if task.get('paused_at') else ""}
 {f"Davom ettirildi: {task.get('continued_at')}" if task.get('continued_at') else ""}
 {f"Yakunlandi: {task.get('finished_at')}" if task.get('finished_at') else ""}
-{f"Bekor qilindi: {task.get('canceled_at')}" if task.get('cancelled_at') else ""}
+{f"Bekor qilindi: {task.get('canceled_at')}" if task.get('canceled_at') else ""}
 """
     }
 
@@ -153,25 +153,27 @@ Ijrochi telefon raqami: {task['worker_phone_number']}
     keyboard = []
 
     if user_id == owner_id or user['role_id'] == 1:
-        keyboard.append(
-            [InlineKeyboardButton(text=keyboard_text['owner'][lang]['edit'], callback_data=f'edit_task_{task_id}')]
-        )
-        keyboard.append(
-            [InlineKeyboardButton(text=keyboard_text['owner'][lang]['delete'], callback_data=f'cancel_task_{task_id}')]
-        )
-    elif user_id == worker_id:
-        if status == 'Not started':
-            keyboard.append([InlineKeyboardButton(text=keyboard_text['worker'][lang]['start'], callback_data=f'start_task_{task_id}')])
-        elif status == 'In progress':
-            keyboard.append([
-                InlineKeyboardButton(text=keyboard_text['worker'][lang]['pause'], callback_data=f'pause_task_{task_id}'),
-                InlineKeyboardButton(text=keyboard_text['worker'][lang]['finish'], callback_data=f'finish_task_{task_id}')
-            ])
-        elif status == 'Paused':
-            keyboard.append([
-                InlineKeyboardButton(text=keyboard_text['worker'][lang]['continue'], callback_data=f'continue_task_{task_id}'),
-                InlineKeyboardButton(text=keyboard_text['worker'][lang]['finish'], callback_data=f'finish_task_{task_id}')
-            ])
+        if task['task_status'] != "Cancelled":
+            keyboard.append(
+                [InlineKeyboardButton(text=keyboard_text['owner'][lang]['edit'], callback_data=f'edit_task_{task_id}')]
+            )
+            keyboard.append(
+                [InlineKeyboardButton(text=keyboard_text['owner'][lang]['delete'], callback_data=f'cancel_task_{task_id}')]
+            )
+    elif user_id == worker_id and task['task_status'] != 'Cancelled':
+        if task['task_status'] != "Cancelled":
+            if task['task_status'] == 'Not started':
+                keyboard.append([InlineKeyboardButton(text=keyboard_text['worker'][lang]['start'], callback_data=f'start_task_{task_id}')])
+            elif task['task_status'] == 'In progress':
+                keyboard.append([
+                    InlineKeyboardButton(text=keyboard_text['worker'][lang]['pause'], callback_data=f'pause_task_{task_id}'),
+                    InlineKeyboardButton(text=keyboard_text['worker'][lang]['finish'], callback_data=f'finish_task_{task_id}')
+                ])
+            elif task['task_status'] == 'Paused':
+                keyboard.append([
+                    InlineKeyboardButton(text=keyboard_text['worker'][lang]['continue'], callback_data=f'continue_task_{task_id}'),
+                    InlineKeyboardButton(text=keyboard_text['worker'][lang]['finish'], callback_data=f'finish_task_{task_id}')
+                ])
     keyboard.append([back_to_main[lang]])
 
     await callback.message.edit_text(task_text[lang], reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))

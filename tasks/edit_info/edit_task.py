@@ -118,7 +118,7 @@ async def edit_task_key_info(callback: types.CallbackQuery, state: FSMContext):
             "uz": "📅Bugungi sanani tanlash"
         }
         keyboard.append([InlineKeyboardButton(text=keyboard_text[lang], callback_data=f"edit_today_date_{task_id}")])
-        await state.set_state(TaskChanges.start_date)
+        await state.set_state(TaskChanges.new_start_date)
     elif key == "priority":
         text = {
             "en": "Enter new priority",
@@ -212,7 +212,8 @@ async def edit_task_description(message: types.Message, state: FSMContext):
 
 async def edit_task_start_date(message: types.Message, state: FSMContext):
     task_id = int((await state.get_data())["task_id"])
-    start_date = parse_and_validate_date(message.text)
+    start_date_str = parse_and_validate_date(message.text)
+    start_date = datetime.strptime(start_date_str, "%d.%m.%Y").date()
     user_id = message.from_user.id
 
     db = get_db_pool()
@@ -231,8 +232,7 @@ async def edit_task_start_date(message: types.Message, state: FSMContext):
 
     await message.answer(text[lang])
     await bot.send_message(worker["user_id"], text[lang])
-    await state.clear()
-    await navigate_to_main_menu(user_id, message.chat.id, state)
+    await state.set_state(TaskChanges.new_due_date)
 
 async def edit_today_date(callback: types.CallbackQuery, state: FSMContext):
     message_data = await state.get_data()
@@ -253,7 +253,7 @@ async def edit_today_date(callback: types.CallbackQuery, state: FSMContext):
     db = get_db_pool()
     task_id = int((await state.get_data())["task_id"])
     await db.execute("UPDATE task SET start_date = $1 WHERE id = $2", start_date, task_id)
-    await state.update_data(start_date=start_date_str)
+    await state.update_data(new_start_date=start_date_str)
 
     # Prepare the keyboard and send a confirmation message in the user's language
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[back_to_main[lang]]])
@@ -268,11 +268,12 @@ async def edit_today_date(callback: types.CallbackQuery, state: FSMContext):
     # Edit the callback message and update the state
     await callback.message.edit_text(send_text, parse_mode="Markdown", reply_markup=keyboard)
     await state.update_data(main_menu_message_id=callback.message.message_id)
-    await state.set_state(TaskChanges.due_date)
+    await state.set_state(TaskChanges.new_due_date)
 
 async def edit_task_due_date(message: types.Message, state: FSMContext):
     task_id = int((await state.get_data())["task_id"])
-    start_date = parse_and_validate_date((await state.get_data())["start_date"])
+    start_date_str = (await state.get_data())["new_start_date"]
+    start_date = datetime.strptime(start_date_str, "%d.%m.%Y") 
     due_date_str = parse_and_validate_date(message.text, start_date)
     due_date = datetime.strptime(due_date_str, "%d.%m.%Y").date()
     user_id = message.from_user.id

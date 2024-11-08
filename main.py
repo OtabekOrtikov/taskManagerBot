@@ -4,6 +4,8 @@ from aiogram.filters import StateFilter
 from aiogram.types import ReplyKeyboardRemove
 import asyncio
 
+# check commit
+
 from department.creation_department import creation_department
 from projects.company_projects import show_company_projects
 from projects.project_info import show_project_info
@@ -19,7 +21,7 @@ from tasks.edit_info.edit_task import edit_task_description, edit_task_due_date,
 from tasks.my_tasks import list_my_tasks
 from tasks.task_info import task_info
 from utils.back_main import back_to_main_menu
-from commands.deletedb import delete_db
+from commands.deletedb import delete_db, drop_db
 from commands.start import start_command
 from tasks.creation.set_today_date import set_today_date
 from worker.change_role import change_user_role
@@ -163,11 +165,12 @@ router.message(StateFilter(TaskCreation.task_assignee_phone))(process_assignee_p
 # task change
 router.message(StateFilter(TaskChanges.task_title))(edit_task_title)
 router.message(StateFilter(TaskChanges.task_description))(edit_task_description)
-router.message(StateFilter(TaskChanges.start_date))(edit_task_start_date)
-router.message(StateFilter(TaskChanges.due_date))(edit_task_due_date)
+router.message(StateFilter(TaskChanges.new_start_date))(edit_task_start_date)
+router.message(StateFilter(TaskChanges.new_due_date))(edit_task_due_date)
 
 # commands
 router.message(F.text == "/deletedb")(delete_db)
+router.message(F.text == "/dropdb")(drop_db)
 
 async def notify_users_about_restart():
     """Notifies users that the bot is restarting."""

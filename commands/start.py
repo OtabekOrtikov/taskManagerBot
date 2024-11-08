@@ -33,11 +33,11 @@ async def start_command(message: types.Message, state: FSMContext):
             await message.reply("Ошибка в параметрах ссылки. Пожалуйста, проверьте правильность ссылки.")
             return
 
-    text = """Привет! Я помогу тебе управлять проектами. Для начала, выберите язык.
+    text = """Привет! Я помогу тебе управлять задачами. Для начала, выберите язык.
     
 ---------------------------------------------------------------------
 
-Salom! Men sizga loyihalarni boshqarishda yordam beraman. Boshlash uchun tilni tanlang."""
+Salom! Men sizga vazifalarni boshqarishda yordam beraman. Boshlash uchun tilni tanlang."""
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
