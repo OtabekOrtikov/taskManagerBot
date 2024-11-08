@@ -7,15 +7,13 @@ async def set_lang(callback: types.CallbackQuery, state: FSMContext):
     db_pool = get_db_pool()
     lang = callback.data.split("_")[1]
     user_id = callback.from_user.id
-    data = await state.get_data()
-    main_menu_message_id = data.get("main_menu_message_id")
+    message_data = await state.get_data()
+    last_button_message_id = message_data.get("main_menu_message_id")
 
-    if main_menu_message_id != callback.message.message_id:
+    if callback.message.message_id != last_button_message_id:
         await callback.answer("This button is no longer active.")
         return
-    # Respond to the callback query to avoid the alert
-    await callback.answer()
-
+    
     async with db_pool.acquire() as connection:
         await connection.execute("UPDATE users SET lang = $1 WHERE user_id = $2", lang, user_id)
 

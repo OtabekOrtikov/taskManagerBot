@@ -38,10 +38,10 @@ async def process_birthdate(message: types.Message, state: FSMContext):
             await connection.execute("""
                 UPDATE users SET birthdate = $1 WHERE user_id = $2
             """, date_obj.date(), message.from_user.id)
-            boss_id = await connection.fetchval("SELECT user_id FROM users WHERE company_id = $1 AND role_id = 1", user['company_id'])
+            boss = await connection.fetchrow("SELECT user_id, lang FROM users WHERE company_id = $1 AND role_id = 1", user['company_id'])
             if user['department_id']:
-                department = await connection.fetchrow("SELECT department_name FROM departments WHERE id = $1", user['department_id'])
-                manager_id = await connection.fetchval("SELECT user_id FROM users WHERE company_id = $1 AND department_id = $2 AND role_id = 2", user['company_id'], user['department_id'])
+                department = await connection.fetchrow("SELECT department_name FROM department WHERE id = $1", user['department_id'])
+                manager = await connection.fetchrow("SELECT user_id, lang FROM users WHERE company_id = $1 AND department_id = $2 AND role_id = 2", user['company_id'], user['department_id'])
 
         # Proceed to the next state
         if user_role == 1 and user['company_id'] is None:
@@ -52,16 +52,18 @@ async def process_birthdate(message: types.Message, state: FSMContext):
                 await message.answer("Endi kompaniya nomini kiriting")
         else:
             await state.clear()
+            new_user_text = {
+                'ru': f"Пользователь {user['fullname']} успешно зарегистрировался на отдел {department['department_name']}",
+                'uz': f"Foydalanuvchi {user['fullname']} muvaffaqiyatli ro'yxatdan o'tdi {department['department_name']} bo'limida",
+                'en': f"User {user['fullname']} has successfully registered in department {department['department_name']}"
+            }
             if lang == 'ru':
                 await message.answer("Вы успешно завершили регистрацию")
-                await bot.send_message(boss_id, f"Пользователь {user['fullname']} успешно зарегистрировался на отдел {department['department_name']}") 
-                if manager_id:
-                    await bot.send_message(manager_id, f"Пользователь {user['fullname']} успешно зарегистрировался на отдел {department['department_name']}")
             elif lang == 'uz':
                 await message.answer("Siz muvaffaqiyatli ro'yxatdan o'tdingiz")
-                await bot.send_message(boss_id, f"Foydalanuvchi {user['fullname']} muvaffaqiyatli ro'yxatdan o'tdi {department['department_name']} bo'limi")
-                if manager_id:
-                    await bot.send_message(manager_id, f"Foydalanuvchi {user['fullname']} muvaffaqiyatli ro'yxatdan o'tdi {department['department_name']} bo'limi")
+            await bot.send_message(boss['user_id'], new_user_text[boss['lang']]) 
+            if manager['user_id']:
+                await bot.send_message(manager['user_id'], new_user_text[manager['lang']])
             await navigate_to_main_menu(user_id, message.chat.id, state)
     except ValueError:
         if lang == 'ru':

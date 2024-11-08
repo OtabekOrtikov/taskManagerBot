@@ -1,6 +1,7 @@
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from config import BOT_USERNAME
 from database.db_utils import get_user, get_db_pool
 from btns import back_to_main
 from states import TaskCreation
@@ -21,7 +22,26 @@ async def create_task(callback: types.CallbackQuery, state: FSMContext):
 
     async with db_pool.acquire() as connection:
         projects = await connection.fetch("SELECT * FROM project WHERE boss_id = $1", user['id'])
+        workers = await connection.fetch("SELECT * FROM users WHERE company_id = $1 AND role_id != 1", user['company_id'])
+        company = await connection.fetchrow("SELECT * FROM company WHERE id = $1", user['company_id'])
+        departments = await connection.fetch("SELECT * FROM department WHERE company_id = $1", user['company_id'])
 
+    if not workers:
+        text = {
+            "en": "You don't have any employees in your company. Therefore, you can't create a task.\n\nPlease add employees to your company using the buttons below.",
+            "ru": "У вас нет сотрудников в вашей компании. Поэтому вы не можете создать задачу.\n\nПожалуйста, добавьте сотрудников в вашу компанию, используя кнопки ниже.",
+            "uz": "Sizning kompaniyangizda hech qanday xodimlar yo'q. Shuning uchun siz vazifa yaratolmaysiz.\n\nIltimos, quyidagi tugmalar orqali kompaniyangizga xodim qo'shing."
+        }
+        keyboard = []
+        for department in departments:
+            referal_link = f"https://t.me/{BOT_USERNAME}?start={company['id']}_department={department['id']}"
+            share_link = f"https://t.me/share/url?url={referal_link}&text=Парни, заходите по ссылке ниже, чтобы получить задание от начальника."
+            keyboard.append([InlineKeyboardButton(text=f"Отдел: {department['department_name']}", url=share_link)])
+
+        keyboard.append([back_to_main[lang]])
+        send_message = await callback.message.edit_text(text=text[lang], reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
+        await state.update_data(main_menu_message_id=send_message.message_id)
+        return
 
     if user['role_id'] == 1:
         if projects:

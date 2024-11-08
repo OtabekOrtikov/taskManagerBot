@@ -57,9 +57,18 @@ async def finish_task(callback: types.CallbackQuery, state: FSMContext):
 
     async with db.acquire() as conn:
         await conn.execute("UPDATE task SET status = 'Finished', finished_at = CURRENT_TIMESTAMP WHERE id = $1", task_id)
+        task = await conn.fetchrow("SELECT task_title, task_owner_id FROM task WHERE id = $1", task_id)
+        task_owner_id = await conn.fetchrow("SELECT task_owner_id FROM task WHERE id = $1", task_id)
+        owner = await conn.fetchrow("SELECT user_id, lang FROM users WHERE id = $1", task_owner_id['task_owner_id'])
     
+    owner_text = {
+        'en': f"User {user['fullname']} has finished the task \"{task['task_title']}\".",
+        'ru': f"Пользователь {user['fullname']} завершил задачу \"{task['task_title']}\".",
+        'uz': f"Foydalanuvchi {user['fullname']} vazifani \"{task['task_title']}\" yakunladi."
+    }
     await callback.answer(text[lang])
     await task_info(callback, state)
+    await bot.send_message(owner['user_id'], owner_text[owner['lang']])
     await state.update_data(main_menu_message_id=callback.message.message_id)
 
 async def cancel_task(callback: types.CallbackQuery, state: FSMContext):
@@ -104,13 +113,13 @@ async def confirm_cancel_task(callback: types.CallbackQuery, state: FSMContext):
     lang = user['lang']
 
     text = {
-        'en': "Task canceled.",
+        'en': "Task cancelled.",
         'ru': "Задача отменена.",
         'uz': "Vazifa bekor qilindi."
     }
 
     async with db.acquire() as conn:
-        await conn.execute("UPDATE task SET status = 'Canceled', canceled_at = CURRENT_TIMESTAMP WHERE id = $1", task_id)
+        await conn.execute("UPDATE task SET status = 'Cancelled', canceled_at = CURRENT_TIMESTAMP WHERE id = $1", task_id)
     
     await callback.answer(text[lang])
     await task_info(callback, state)

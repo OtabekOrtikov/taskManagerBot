@@ -72,7 +72,7 @@ main_menu_btns = {
             [InlineKeyboardButton(text="Настройки", callback_data="settings")]
         ]),
         "uz": InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Мazifalarim ro'yxati", callback_data="list_my_tasks")],
+            [InlineKeyboardButton(text="Vazifalarim ro'yxati", callback_data="list_my_tasks")],
             [InlineKeyboardButton(text="Mening kompaniyam", callback_data="company")],
             [InlineKeyboardButton(text="Sozlamalar", callback_data="settings")]
         ]),
