@@ -45,7 +45,9 @@ async def list_my_tasks(callback: types.CallbackQuery, state: FSMContext):
     keyboard = []
 
     if total_tasks == 0:
-        text[lang] += "No tasks found."
+        text['en'] += "No tasks found."
+        text['ru'] += "Задачи не найдены."
+        text['uz'] += "Vazifalar topilmadi."
 
     for task in current_tasks:
         keyboard.append([InlineKeyboardButton(text=f"{task['task_title']} - { await parse_status(task['status'], lang)}", callback_data=f"task_info_{task['task_id']}")])

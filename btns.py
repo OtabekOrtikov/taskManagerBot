@@ -41,6 +41,7 @@ main_menu_btns = {
     },
     "manager": {
         "ru": InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Список задач", callback_data="list_my_tasks")],
             [InlineKeyboardButton(text="Создать задачу", callback_data="create_task")],
             [
                 InlineKeyboardButton(text="Моя компания", callback_data="company"),
@@ -49,6 +50,7 @@ main_menu_btns = {
             [InlineKeyboardButton(text="Настройки", callback_data="settings")]
         ]),
         "uz": InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Vazifalarim ro'yxati", callback_data="list_my_tasks")],
             [InlineKeyboardButton(text="Vazifa yaratish", callback_data="create_task")],
             [
                 InlineKeyboardButton(text="Mening kompaniyam", callback_data="company"),
@@ -57,6 +59,7 @@ main_menu_btns = {
             [InlineKeyboardButton(text="Sozlamalar", callback_data="settings")]
         ]),
         "en": InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="My tasks list", callback_data="list_my_tasks")],
             [InlineKeyboardButton(text="Create task", callback_data="create_task")],
             [
                 InlineKeyboardButton(text="My company", callback_data="company"),
@@ -85,9 +88,9 @@ main_menu_btns = {
 }
 
 back_to_main = {
-    "ru": InlineKeyboardButton(text="🔙Назад", callback_data="back_to_main_menu"),
-    "uz": InlineKeyboardButton(text="🔙Orqaga", callback_data="back_to_main_menu"),
-    "en": InlineKeyboardButton(text="🔙Back", callback_data="back_to_main_menu")
+    "ru": InlineKeyboardButton(text="🔙Вернуться в главное меню", callback_data="back_to_main_menu"),
+    "uz": InlineKeyboardButton(text="🔙Asosiy menyuga qaytish", callback_data="back_to_main_menu"),
+    "en": InlineKeyboardButton(text="🔙Back to the main menu", callback_data="back_to_main_menu")
 }
 
 company_menu_btns = {
@@ -157,9 +160,9 @@ company_menu_btns = {
 }
 
 back_to_company = {
-    "ru": InlineKeyboardButton(text="🔙Назад", callback_data="company"),
-    "uz": InlineKeyboardButton(text="🔙Orqaga", callback_data="company"),
-    "en": InlineKeyboardButton(text="🔙Back", callback_data="company")
+    "ru": InlineKeyboardButton(text="🔙Вернуться в компанию", callback_data="company"),
+    "uz": InlineKeyboardButton(text="🔙Kompaniyaga qaytish", callback_data="company"),
+    "en": InlineKeyboardButton(text="🔙Back to company", callback_data="company")
 }
 
 edit_user_info_btns = {
@@ -184,9 +187,9 @@ edit_user_info_btns = {
 }
 
 back_to_settings = {
-    "ru": {"text": "🔙Назад", "callback_data": "settings"},
-    "uz": {"text": "🔙Orqaga", "callback_data": "settings"},
-    "en": {"text": "🔙Back", "callback_data": "settings"}
+    "ru": {"text": "🔙Назад к настройкам", "callback_data": "settings"},
+    "uz": {"text": "🔙Sozlamalarga qaytish", "callback_data": "settings"},
+    "en": {"text": "🔙Back to settings", "callback_data": "settings"}
 }
 
 back_page = {
@@ -226,9 +229,9 @@ company_info_btns = {
 }
 
 back_to_edit_company = {
-    "ru": InlineKeyboardButton(text="🔙Назад", callback_data="change_company"),
-    "uz": InlineKeyboardButton(text="🔙Orqaga", callback_data="change_company"),
-    "en": InlineKeyboardButton(text="🔙Back", callback_data="change_company")
+    "ru": InlineKeyboardButton(text="🔙Назад к настройкам", callback_data="change_company"),
+    "uz": InlineKeyboardButton(text="🔙Sozlamalarga qaytish", callback_data="change_company"),
+    "en": InlineKeyboardButton(text="🔙Back to settings", callback_data="change_company")
 }
 
 priority_btns = {
