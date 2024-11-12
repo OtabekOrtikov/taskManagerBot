@@ -1,3 +1,4 @@
+from datetime import datetime
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -5,20 +6,18 @@ from database.db_utils import get_user, get_db_pool
 from btns import settings_menu_btns, back_to_main
 
 async def show_settings(callback: types.CallbackQuery, state: FSMContext):
+    message_data = await state.get_data()
+    last_button_message_id = message_data.get("main_menu_message_id")
+
+    if callback.message.message_id != last_button_message_id:
+        await callback.answer("This button is no longer active.")
+        return
+
     db_pool = get_db_pool()
     user_id = callback.from_user.id
     user = await get_user(user_id)
     role = user['role_id']
     lang = user['lang']
-
-    message_data = await state.get_data()
-    last_button_message_id = message_data.get("main_menu_message_id")
-    
-    if callback.message.message_id != last_button_message_id:
-        await callback.answer("This button is no longer active.")
-        return
-    
-    await state.clear()
     
     async with db_pool.acquire() as connection:
         company = await connection.fetchrow("SELECT * FROM company WHERE id = $1", user['company_id'])
@@ -28,30 +27,32 @@ async def show_settings(callback: types.CallbackQuery, state: FSMContext):
     # Determine the username text
     username_text = f"@{user['username']}" if user['username'] else "Не указан" if lang == 'ru' else "Belgilanmagan"
     role_text = "Руководитель компании" if role == 1 else "Руководитель отдела" if role == 2 else "Сотрудник"
+    registration_date = user['registration_date'].strftime("%Y-%m-%d %H:%M")
+
 
     if lang == 'ru':
         text = (
-            f"**Информация о вас:**\n"
-            f"Имя: **{user['fullname']}**\n"
-            f"Логин: **{username_text}**\n"
-            f"Номер телефона: **{user['phone_number']}**\n"
-            f"Должность: **{role_text}**\n"
-            f"Дата рождения: **{user['birthdate']}**\n"
-            f"Дата регистрации: **{user['registration_date']}**\n"
-            f"Язык интерфейса: **Русский**\n"
-            f"Компания: **{company['company_name']}**\n\n"
+            f"Информация о вас:\n"
+            f"Имя: {user['fullname']}\n"
+            f"Логин: {username_text}\n"
+            f"Номер телефона: {user['phone_number']}\n"
+            f"Должность: {role_text}\n"
+            f"Дата рождения: {user['birthdate']}\n"
+            f"Дата регистрации: {registration_date}\n"
+            f"Язык интерфейса: Русский\n"
+            f"Компания: {company['company_name']}\n\n"
         )
     elif lang == 'uz':
         text = (
-            f"**Siz haqingizdagi ma'lumotlar:**\n"
-            f"F.I.O.: **{user['fullname']}**\n"
-            f"Login: **{username_text}**\n"
-            f"Telefon raqami: **{user['phone_number']}**\n"
-            f"Lavozim: **{role_text}**\n"
-            f"Tug'ilgan kun: **{user['birthdate']}**\n"
-            f"Ro'yxatdan o'tgan sana: **{user['registration_date']}**\n"
-            f"Interfeyz til: **O'zbek**\n"
-            f"Kompaniya: **{company['company_name']}**\n"
+            f"Siz haqingizdagi ma'lumotlar:\n"
+            f"F.I.O.: {user['fullname']}\n"
+            f"Login: {username_text}\n"
+            f"Telefon raqami: {user['phone_number']}\n"
+            f"Lavozim: {role_text}\n"
+            f"Tug'ilgan kun: {user['birthdate']}\n"
+            f"Ro'yxatdan o'tgan sana: {registration_date}\n"
+            f"Interfeyz til: O'zbek\n"
+            f"Kompaniya: {company['company_name']}\n"
         )
 
     # Initialize keyboard and define the message content based on role and language
@@ -91,7 +92,6 @@ async def show_settings(callback: types.CallbackQuery, state: FSMContext):
     # Send or edit the message
     send_message = await callback.message.edit_text(
         text,
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
+        reply_markup=reply_markup
     )
     await state.update_data(main_menu_message_id=send_message.message_id)

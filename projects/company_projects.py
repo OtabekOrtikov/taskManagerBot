@@ -21,7 +21,11 @@ async def show_company_projects(callback: types.CallbackQuery, state: FSMContext
     page = int(data[-1]) if len(data) > 3 else 1
     
     async with db_pool.acquire() as connection:
-        projects = await connection.fetch("SELECT * FROM project WHERE boss_id = $1", user['id'])
+        projects = await connection.fetch("""SELECT DISTINCT p.id as project_id, p.project_name FROM task t
+JOIN users u ON t.task_assignee_id = u.id
+JOIN company c ON c.id = u.company_id
+JOIN project p ON t.project_id = p.id
+WHERE u.company_id = $1""", user['company_id'])
         company = await connection.fetchrow("SELECT * FROM company WHERE id = $1", user['company_id'])
     
     total_projects = len(projects)
@@ -51,7 +55,7 @@ async def show_company_projects(callback: types.CallbackQuery, state: FSMContext
     keyboard.append([InlineKeyboardButton(text=keyboard_text[lang], callback_data="create_project")])
 
     for project in current_projects:
-        keyboard.append([InlineKeyboardButton(text=f"{project['project_name']}", callback_data=f"project_info_{project['id']}")])
+        keyboard.append([InlineKeyboardButton(text=f"{project['project_name']}", callback_data=f"project_info_{project['project_id']}")])
     
     if page > 1:
         keyboard.append([InlineKeyboardButton(text=back_page[lang], callback_data=f"show_company_projects_{page - 1}")])

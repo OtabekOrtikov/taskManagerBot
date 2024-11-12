@@ -22,9 +22,9 @@ async def show_company_tasks(callback: types.CallbackQuery, state: FSMContext):
     
     async with db_pool.acquire() as connection:
         if user['role_id'] == 1:
-            tasks = await connection.fetch("SELECT t.task_title, t.id AS task_id, u.fullname FROM task t JOIN users u ON t.task_assignee_id = u.id WHERE u.company_id = $1 AND t.project_id is NULL", user['company_id'])
+            tasks = await connection.fetch("SELECT t.task_title, t.id AS task_id, u.fullname FROM task t JOIN users u ON t.task_assignee_id = u.id WHERE u.company_id = $1", user['company_id'])
         else:
-            tasks = await connection.fetch("SELECT t.task_title, t.id AS task_id, u.fullname FROM task t JOIN users u ON t.task_assignee_id = u.id WHERE u.company_id = $1 AND t.project_id is NULL AND u.department_id = $2", user['company_id'], user['department_id'])
+            tasks = await connection.fetch("SELECT t.task_title, t.id AS task_id, u.fullname FROM task t JOIN users u ON t.task_assignee_id = u.id WHERE u.company_id = $1 AND u.department_id = $2", user['company_id'], user['department_id'])
         company = await connection.fetchrow("SELECT * FROM company WHERE id = $1", user['company_id'])
     
     total_tasks = len(tasks)
