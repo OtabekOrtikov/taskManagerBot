@@ -47,3 +47,13 @@ class TaskChanges(StatesGroup):
     new_start_date = State()
     new_due_date = State()
     priority = State()
+
+class DraftChanges(StatesGroup):
+    draft_id = State()
+    draft_title = State()
+    draft_description = State()
+    draft_start_date = State()
+    draft_due_date = State()
+    draft_assignee_id = State()
+    draft_priority = State()
+    draft_confirm = State()

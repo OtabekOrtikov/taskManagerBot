@@ -15,6 +15,7 @@ async def progress_task_priority(callback: types.CallbackQuery, state: FSMContex
         return
 
     priority_id = callback.data.split("_")[-1]
+    await state.update_data(priority=priority_id)
     user_id = callback.from_user.id
     lang = await get_user_lang(user_id)
 
@@ -51,7 +52,10 @@ async def progress_task_priority(callback: types.CallbackQuery, state: FSMContex
             f"Priority: {priority}\n\n"
             f"Is this information correct?"
         )
-        keyboard.append([InlineKeyboardButton(text="Yes", callback_data="task_confirm"), InlineKeyboardButton(text="Cancel creation", callback_data="back_to_main_menu")])
+        keyboard = [
+            [InlineKeyboardButton(text="Yes", callback_data="task_confirm"), InlineKeyboardButton(text="Edit information", callback_data="edit_draft_task")],
+            [InlineKeyboardButton(text="Cancel", callback_data="back_to_main_menu")]
+        ]
     elif lang == 'ru':
         send_text = (
             f"Название задания: {task_title}\n"
@@ -63,7 +67,10 @@ async def progress_task_priority(callback: types.CallbackQuery, state: FSMContex
             f"Приоритет: {priority}\n\n"
             f"Вся информация верна?"
         )
-        keyboard.append([InlineKeyboardButton(text="Да", callback_data="task_confirm"), InlineKeyboardButton(text="Отменить создание", callback_data="back_to_main_menu")])
+        keyboard = [
+            [InlineKeyboardButton(text="Да", callback_data="task_confirm"), InlineKeyboardButton(text="Изменить информацию", callback_data="edit_draft_task")],
+            [InlineKeyboardButton(text="Отменить", callback_data="back_to_main_menu")]
+        ]
     elif lang == 'uz':
         send_text = (
             f"Vazifa nomi: {task_title}\n"
@@ -75,7 +82,10 @@ async def progress_task_priority(callback: types.CallbackQuery, state: FSMContex
             f"Ustuvorlik: {priority}\n\n"
             f"Bu ma'lumotlar to'g'ri mi?"
         )
-        keyboard.append([InlineKeyboardButton(text="Ha", callback_data="task_confirm"), InlineKeyboardButton(text="Bekor qilish", callback_data="back_to_main_menu")])
+        keyboard = [
+            [InlineKeyboardButton(text="Ha", callback_data="task_confirm"), InlineKeyboardButton(text="Ma'lumotni o'zgartirish", callback_data="edit_draft_task")],
+            [InlineKeyboardButton(text="Bekor qilish", callback_data="back_to_main_menu")]
+        ]
 
     await callback.message.edit_text(send_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
     await state.update_data(main_menu_message_id=callback.message.message_id)

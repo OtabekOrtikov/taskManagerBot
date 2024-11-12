@@ -3,6 +3,7 @@ from aiogram.fsm.context import FSMContext
 from config import API_TOKEN
 from database.db_utils import get_user, get_db_pool, create_task
 from menu.main_menu import navigate_to_main_menu
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from datetime import datetime
 
 bot = Bot(token=API_TOKEN)
@@ -60,7 +61,7 @@ async def confirming_task(callback: types.CallbackQuery, state: FSMContext):
     elif lang == 'uz':
         await callback.message.answer("Vazifa muvaffaqiyatli yaratildi. Agar siz boshqa vazifa yaratmoqchi bo'lsangiz, pastdagi tugmani bosing.")
     
-    notify_key = f"{lang}_{'project' if project_id else 'company'}"
+    notify_key = f"{worker['lang']}_{'project' if project_id else 'company'}"
     await bot.send_message(worker['user_id'], notify_worker_text[notify_key])
     
     await state.clear()

@@ -9,7 +9,7 @@ async def creation_department(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     main_menu_message_id = data.get("main_menu_message_id")
 
-    if main_menu_message_id != callback.message.message_id + 1:
+    if main_menu_message_id != callback.message.message_id:
         await callback.answer(f"This button is no longer active.")
         return
 

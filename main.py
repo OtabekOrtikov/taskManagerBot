@@ -11,6 +11,11 @@ from projects.project_task import show_project_tasks
 from projects.project_workers import show_project_workers
 from company.show_company_tasks import show_company_tasks
 from tasks.creation.assignee_phone import process_assignee_phone
+from tasks.creation.edit_draft.edit_date import edit_draft_date, process_draft_due_date, process_draft_start_date
+from tasks.creation.edit_draft.edit_description import edit_draft_description, process_draft_description
+from tasks.creation.edit_draft.edit_draft import edit_draft_task
+from tasks.creation.edit_draft.edit_priority import edit_draft_priority
+from tasks.creation.edit_draft.edit_title import edit_draft_title, process_draft_title
 from tasks.creation.list_workers import process_list_workers
 from tasks.creation.priority import progress_task_priority
 from tasks.creation.task_confirmation import confirming_task
@@ -118,6 +123,12 @@ router.callback_query.register(process_list_workers, F.data.startswith("task_wor
 router.callback_query.register(progress_task_priority, F.data.startswith("task_priority_"))
 router.callback_query.register(confirming_task, F.data == "task_confirm")
 
+router.callback_query.register(edit_draft_task, F.data == "edit_draft_task")
+router.callback_query.register(edit_draft_title, F.data == "edit_draft_title")
+router.callback_query.register(edit_draft_description, F.data == "edit_draft_description")
+router.callback_query.register(edit_draft_date, F.data == "edit_draft_date")
+router.callback_query.register(edit_draft_priority, F.data == "edit_draft_priority")
+
 router.callback_query.register(task_info, F.data.startswith("task_info_"))
 router.callback_query.register(edit_task_info, F.data.startswith("edit_task_"))
 router.callback_query.register(edit_task_key_info, F.data.startswith("edit_info_task_"))
@@ -160,11 +171,17 @@ router.message(StateFilter(TaskCreation.start_date))(process_start_date)
 router.message(StateFilter(TaskCreation.due_date))(process_due_date)
 router.message(StateFilter(TaskCreation.task_assignee_phone))(process_assignee_phone)
 
+# draft change
+router.message(StateFilter(DraftChanges.draft_title))(process_draft_title)
+router.message(StateFilter(DraftChanges.draft_description))(process_draft_description)
+router.message(StateFilter(DraftChanges.draft_start_date))(process_draft_start_date)
+router.message(StateFilter(DraftChanges.draft_due_date))(process_draft_due_date)
+
 # task change
 router.message(StateFilter(TaskChanges.task_title))(edit_task_title)
 router.message(StateFilter(TaskChanges.task_description))(edit_task_description)
-router.message(StateFilter(TaskChanges.new_start_date))(edit_task_start_date)
-router.message(StateFilter(TaskChanges.new_due_date))(edit_task_due_date)
+router.message(StateFilter(TaskChanges.new_start_date))(process_draft_start_date)
+router.message(StateFilter(TaskChanges.new_due_date))(process_draft_due_date)
 
 # commands
 router.message(F.text == "/deletedb")(delete_db)
