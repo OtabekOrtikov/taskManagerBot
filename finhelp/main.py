@@ -39,12 +39,7 @@ CREATE TABLE IF NOT EXISTS expenses (
 # Функция для подключения к PostgreSQL и создания таблиц
 async def create_db_pool():
     global db_pool
-    db_pool = await asyncpg.create_pool(
-        user='ixlosfcu_taskManagerBot',       
-        password='h2i-5wn-5Ah-Ufh',
-        database='ixlosfcu_finhelp',
-        host='localhost:5432'
-    )
+    db_pool = await asyncpg.create_pool("postgresql://ixlosfcu_taskManagerBot:h2i-5wn-5Ah-Ufh@localhost:5432/ixlosfcu_finhelp")
     async with db_pool.acquire() as connection:
         await connection.execute(CREATE_TABLES_SQL)  # Создание таблиц при старте
     logging.info("✅ Подключение к базе данных установлено. Таблицы проверены.")
